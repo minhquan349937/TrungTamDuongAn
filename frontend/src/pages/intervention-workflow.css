@@ -1,0 +1,565 @@
+.ip-page {
+  display: grid;
+  gap: 24px;
+  color: #344b68;
+  min-width: 0;
+}
+.ip-page h1,
+.ip-page h2,
+.ip-page h3,
+.ip-page p {
+  margin: 0;
+}
+.ip-page h2 {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.ip-page h3 {
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.7;
+}
+.ip-page p {
+  color: #7b899e;
+  line-height: 1.8;
+  font-size: 15px;
+}
+.ip-page .page-heading {
+  margin-bottom: 4px;
+  gap: 24px;
+}
+.ip-page .page-heading > .ant-input-affix-wrapper {
+  width: min(430px, 100%);
+  padding: 13px 16px;
+}
+.ip-loading {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: #7b899e;
+  padding: 12px;
+}
+.ip-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.ip-metrics > div {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 25px 28px;
+}
+.ip-metrics svg {
+  color: #279e96;
+  width: 27px;
+  height: 27px;
+}
+.ip-metrics > div > div {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ip-metrics span {
+  font-size: 15px;
+  color: #7b899e;
+}
+.ip-metrics b {
+  font-size: 30px;
+}
+.ip-page .ip-table-wrap {
+  overflow-x: auto;
+  padding: 0;
+}
+.ip-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 740px;
+  text-align: left;
+  font-size: 16px;
+}
+.ip-table th {
+  background: #f1f5fa;
+  color: #627591;
+  padding: 22px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.ip-table td {
+  padding: 23px 22px;
+  border-top: 1px solid #edf1f6;
+  font-size: 15px;
+}
+.ip-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ip-table tbody tr:hover,
+.ip-table tbody tr.selected {
+  background: #f0f5ff;
+}
+.ip-table small {
+  display: block;
+  margin-top: 5px;
+  color: #8a99ae;
+  font-size: 13px;
+}
+.ip-table input[type="radio"] {
+  width: 19px;
+  height: 19px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+.ip-student-link {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #315eac;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ip-student-link b {
+  font-weight: 700;
+}
+.ip-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e8efff;
+  color: #4671b8;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.ip-count {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 7px;
+  color: #3472bd;
+  background: #edf4ff;
+  white-space: nowrap;
+}
+.ip-breadcrumb {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #8a99ae;
+  font-size: 14px;
+}
+.ip-student-heading {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 0 18px;
+}
+.ip-student-heading .ip-avatar {
+  width: 70px;
+  height: 70px;
+  font-size: 25px;
+}
+.ip-student-heading h1 {
+  font-size: 29px;
+  font-weight: 750;
+  letter-spacing: -0.8px;
+}
+.ip-student-heading p {
+  color: #279e96;
+  font-weight: 650;
+  margin-top: 5px;
+}
+.ip-tabs {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  border-bottom: 1px solid #e2e8f1;
+}
+.ip-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 18px 10px;
+  color: #7b899e;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ip-tabs button.active {
+  color: #2563eb;
+  border-color: #2563eb;
+}
+.ip-section-heading,
+.ip-plan-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.ip-page .ip-bank-empty {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 62px 24px;
+  text-align: center;
+}
+.ip-bank-empty p {
+  max-width: 600px;
+}
+.ip-empty-symbol {
+  padding: 24px;
+  background: #edf3ff;
+  color: #5b83c8;
+  border-radius: 22px;
+  margin-bottom: 10px;
+}
+.ip-steps {
+  list-style: none;
+  display: flex;
+  gap: 24px;
+  margin: 0;
+  padding: 22px 0;
+  border-top: 1px solid #e2e8f1;
+}
+.ip-steps li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: #8a99ae;
+  font-weight: 600;
+  font-size: 15px;
+}
+.ip-steps li > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #edf1f6;
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+}
+.ip-steps li.active {
+  color: #2563eb;
+}
+.ip-steps li.active > span {
+  color: white;
+  background: #2563eb;
+}
+.ip-plan-fields {
+  padding: 22px 26px;
+  display: grid;
+  grid-template-columns: 1fr 240px;
+  gap: 22px;
+}
+.ip-plan-fields label {
+  display: grid;
+  gap: 9px;
+  font-weight: 600;
+}
+.ip-plan-fields input[type="date"],
+.ip-domain-heading select {
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  color: #344b68;
+  background: white;
+  min-width: 0;
+}
+.ip-page .ip-domain {
+  padding: 0;
+  overflow: hidden;
+}
+.ip-domain-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 25px;
+}
+.ip-domain-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-wrap: wrap;
+}
+.ip-number {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #edf3ff;
+  color: #567ab6;
+  font-weight: 700;
+}
+.ip-domain-heading h2 {
+  font-size: 18px;
+}
+.ip-domain-heading label {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
+}
+.ip-domain-heading label > span {
+  color: #8a99ae;
+  font-size: 13px;
+}
+.ip-domain-heading select {
+  max-width: 310px;
+  font-size: 15px;
+}
+.ip-domain-hint {
+  padding: 0 26px 22px 70px;
+}
+.ip-domain-goals {
+  border-top: 1px solid #e7edf4;
+}
+.ip-goal-row {
+  padding: 22px 27px;
+  border-bottom: 1px solid #edf1f6;
+}
+.ip-goal-row:last-child {
+  border: 0;
+}
+.ip-page .ant-checkbox-wrapper {
+  font-size: 16px;
+  line-height: 1.9;
+  color: #344b68;
+  align-items: baseline;
+}
+.ip-goal-main > p {
+  padding-left: 24px;
+  color: #71829a;
+  margin-top: 5px;
+  white-space: pre-wrap;
+}
+.ip-goal-main > .ant-btn {
+  margin-top: 8px;
+}
+.ip-children {
+  display: grid;
+  gap: 15px;
+  padding: 18px 0 0 26px;
+}
+.ip-children > div {
+  display: grid;
+  gap: 9px;
+  padding: 14px 18px;
+  background: #f6f8fc;
+  border-radius: 10px;
+}
+.ip-age {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 6px;
+  background: #edf4ff;
+  color: #5a7db4;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.ip-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 26px;
+  border: 1px solid #e4eaf4;
+  background: #fff;
+  border-radius: 13px;
+}
+.ip-footer > span,
+.ip-footer p {
+  font-size: 14px;
+  color: #7b899e;
+}
+.ip-sticky {
+  position: sticky;
+  bottom: 16px;
+  z-index: 3;
+  box-shadow: 0 8px 30px #263c6312;
+}
+.ip-outline {
+  display: grid;
+  gap: 23px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ip-outline-domain {
+  padding: 25px 28px;
+}
+.ip-outline-domain > h2 {
+  padding-bottom: 18px;
+  border-bottom: 1px solid #e8edf5;
+}
+.ip-outline-domain > h2 span {
+  color: #8a99ae;
+  font-size: 15px;
+  font-weight: 500;
+}
+.ip-outline-domain ol {
+  padding-left: 24px;
+}
+.ip-outline-domain ol > li {
+  padding-top: 20px;
+}
+.ip-outline-domain ul {
+  list-style: none;
+  padding: 0;
+}
+.ip-outline-target {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 10px 0;
+}
+.ip-outline-target > div {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ip-outline-target p {
+  color: #657b96;
+  white-space: pre-wrap;
+}
+.ip-plans {
+  display: grid;
+  gap: 30px;
+}
+.ip-plan {
+  display: grid;
+  gap: 18px;
+}
+.ip-status {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  background: #edf2fa;
+  color: #61799b;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.ip-status.active {
+  background: #e8f6f0;
+  color: #288971;
+}
+.ip-status.completed {
+  background: #edf3ff;
+  color: #4675b8;
+}
+@media (max-width: 1000px) {
+  .ip-metrics > div {
+    padding: 20px;
+  }
+  .ip-metrics > div > div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .ip-domain-heading {
+    align-items: flex-start;
+  }
+  .ip-domain-heading label {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+@media (max-width: 700px) {
+  .ip-page {
+    gap: 18px;
+  }
+  .ip-page .page-heading,
+  .ip-section-heading,
+  .ip-footer,
+  .ip-domain-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .ip-metrics {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .ip-metrics > div > div {
+    flex-direction: row;
+    align-items: center;
+  }
+  .ip-student-heading h1 {
+    font-size: 23px;
+  }
+  .ip-student-heading .ip-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 18px;
+  }
+  .ip-breadcrumb > span {
+    display: none;
+  }
+  .ip-steps {
+    gap: 10px;
+  }
+  .ip-steps li {
+    font-size: 11px;
+    gap: 5px;
+    align-items: flex-start;
+    flex: 1;
+  }
+  .ip-steps li > span {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .ip-plan-fields {
+    grid-template-columns: 1fr;
+  }
+  .ip-domain-heading label,
+  .ip-domain-heading select {
+    width: 100%;
+    max-width: none;
+  }
+  .ip-domain-hint {
+    padding-left: 25px;
+  }
+  .ip-goal-row,
+  .ip-outline-domain {
+    padding: 20px;
+  }
+  .ip-children {
+    padding-left: 0;
+  }
+  .ip-plan-heading {
+    align-items: flex-start;
+  }
+  .ip-outline-domain > h2 {
+    font-size: 18px;
+  }
+  .ip-sticky {
+    bottom: 8px;
+  }
+  .ip-table-wrap {
+    max-width: 100%;
+  }
+}
+
+.ip-progress { display: grid; gap: 12px; margin: 20px 0; }
+.ip-progress-row { display: grid; grid-template-columns: minmax(180px,1fr) 170px auto; align-items: center; gap: 12px; padding: 12px; background: #f6f8fc; border-radius: 10px; }
+.ip-observation { margin: 14px 0; padding: 12px; border: 1px solid #e7edf5; border-radius: 10px; }
+@media(max-width:760px) { .ip-progress-row { grid-template-columns: 1fr; } }

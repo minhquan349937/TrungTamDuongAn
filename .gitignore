@@ -46,7 +46,9 @@ build/
 .github/modernize/
 **/node_modules/
 **/.test-runtime/
+**/.backups/
 **/.sites.local/
 **/test-results/
 **/playwright-report/
 *.log
+**/__pycache__/

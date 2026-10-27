@@ -1,6 +1,23 @@
 # Database Dương An
 
-Thiết kế **PostgreSQL 17/18** cho hệ thống quản lý trung tâm can thiệp sớm, phục vụ một trung tâm với nhiều cơ sở, ba vai trò ADMIN / TEACHER / PARENT.
+## Bản hiện tại: MySQL — thiết kế 1.1
+
+Theo [bản chỉnh sửa 1.1](DESIGN_v1.1_chinh_sua.md) cùng phần mở rộng chương trình can thiệp, hệ thống dùng **một trung tâm duy nhất**, **29 bảng**, 4 bảng lớp/lịch/điểm danh và 9 bảng ngân hàng mục tiêu/kế hoạch/tiến độ. Triển khai bằng **MySQL** theo yêu cầu mới.
+
+- [Hướng dẫn MySQL, danh mục bảng, trường học sinh và quy tắc nghiệp vụ](mysql/README.md)
+- [V1 — schema MySQL đầy đủ](mysql/migrations/V1__design_v1_1.sql)
+- [V2 — snapshot, chống chồng lịch và khoảng lương](mysql/migrations/V2__business_guards.sql)
+- [V4 — chương trình và lĩnh vực can thiệp](mysql/migrations/V4__programs_and_domains.sql)
+- [Truy vấn mẫu MySQL](mysql/queries.sql)
+- [Kết quả kiểm thử MySQL](mysql/TESTING.md)
+
+**Bắt đầu ở `database/mysql/README.md`.** Chỉ chạy bộ MySQL trên database rỗng; đây chưa phải migration chuyển dữ liệu từ bản PostgreSQL. Tài liệu chỉnh sửa 1.1 gốc vẫn giữ nguyên, còn ánh xạ kiểu dữ liệu và quyết định triển khai MySQL nằm trong hướng dẫn mới.
+
+## Tham khảo bản cũ: PostgreSQL 1.0
+
+**Toàn bộ phần bên dưới chỉ áp dụng cho bản PostgreSQL cũ**, không dùng để khởi tạo thiết kế MySQL 1.1.
+
+Thiết kế **PostgreSQL 17/18** trước đây phục vụ một trung tâm với nhiều cơ sở, ba vai trò ADMIN / TEACHER / PARENT.
 
 - [Thiết kế chi tiết và sơ đồ ERD](DESIGN.md)
 - [V1: 30 bảng, khóa ngoại, chỉ mục và view công nợ](migrations/V1__core_schema.sql)

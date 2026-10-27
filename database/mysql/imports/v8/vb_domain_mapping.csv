@@ -1,0 +1,35 @@
+﻿source_domain_id,source_section,domain_id,domain_name,level_domain_id
+DM5000,Yêu cầu,DM5001,Yêu cầu,LD5001
+DM5001,Gọi tên,DM5002,Gọi tên,LD5002
+DM5002,Nghe hiểu,DM5003,Nghe hiểu,LD5003
+DM5003,Quan sát,DM5004,Quan sát,LD5004
+DM5004,Chơi độc lập,DM5005,Chơi độc lập,LD5005
+DM5005,Chơi xã hội,DM5006,Chơi xã hội,LD5006
+DM5006,Bắt chước vận động,DM5007,Bắt chước vận động,LD5007
+DM5007,Bắt chước phát âm,DM5008,Bắt chước phát âm,LD5008
+DM5008,Lời nói tự phát,DM5009,Lời nói tự phát,LD5009
+DM5009,Yêu cầu,DM5001,Yêu cầu,LD5010
+DM5010,Gọi tên,DM5002,Gọi tên,LD5011
+DM5011,Nghe hiểu,DM5003,Nghe hiểu,LD5012
+DM5012,Quan sát,DM5004,Quan sát,LD5013
+DM5013,Chơi độc lập,DM5005,Chơi độc lập,LD5014
+DM5014,Chơi xã hội,DM5006,Chơi xã hội,LD5015
+DM5015,Bắt chước vận động,DM5007,Bắt chước vận động,LD5016
+DM5016,Bắt chước phát âm,DM5008,Bắt chước phát âm,LD5017
+DM5017,Phản hồi RFFC,DM5010,Phản hồi RFFC,LD5018
+DM5018,Hội thoại,DM5011,Hội thoại,LD5019
+DM5019,Kỹ năng nhóm,DM5012,Kỹ năng nhóm,LD5020
+DM5020,Ngữ pháp,DM5013,Ngữ pháp,LD5021
+DM5021,Yêu cầu,DM5001,Yêu cầu,LD5022
+DM5022,Gọi tên,DM5002,Gọi tên,LD5023
+DM5023,Nghe hiểu,DM5003,Nghe hiểu,LD5024
+DM5024,Quan sát,DM5004,Quan sát,LD5025
+DM5025,Chơi độc lập,DM5005,Chơi độc lập,LD5026
+DM5026,Chơi xã hội,DM5006,Chơi xã hội,LD5027
+DM5027,Phản hồi RFFC,DM5010,Phản hồi RFFC,LD5028
+DM5028,Hội thoại,DM5011,Hội thoại,LD5029
+DM5029,Kỹ năng nhóm,DM5012,Kỹ năng nhóm,LD5030
+DM5030,Ngữ pháp,DM5013,Ngữ pháp,LD5031
+DM5031,Đọc,DM5014,Đọc,LD5032
+DM5032,Viết,DM5015,Viết,LD5033
+DM5033,Toán,DM5016,Toán,LD5034

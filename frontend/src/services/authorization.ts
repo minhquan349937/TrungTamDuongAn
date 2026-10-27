@@ -33,6 +33,10 @@ export function visibleData(
           }));
   return {
     ...db,
+    studentGoals:
+      role === "PARENT"
+        ? []
+        : db.studentGoals.filter((g) => ids.includes(g.studentId)),
     students: db.students.filter((s) => ids.includes(s.id)),
     parents: db.parents.filter((p) =>
       role === "PARENT"

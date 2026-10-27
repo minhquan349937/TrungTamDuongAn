@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { Result, Button } from "antd";
+import { Result, Button, Spin } from "antd";
 import { AppLayout } from "../layouts/AppLayout";
 import { Dashboard, Charts } from "../pages/Dashboard";
 import { StudentsTable, StaffTable } from "../features/PeopleTables";
@@ -16,6 +16,10 @@ import {
 } from "../pages/Supporting";
 import { useDemo } from "../hooks/useDemo";
 import { canVisit } from "../services/authorization";
+import { RealInterventionPlans } from "../pages/RealInterventionPlans";
+import { GoalCatalogManager } from "../pages/GoalCatalogManager";
+import { LoginPage } from "../pages/LoginPage";
+import { useAuth } from "../auth/AuthProvider";
 function Content() {
   const { role } = useDemo(),
     { pathname } = useLocation();
@@ -29,6 +33,12 @@ function Content() {
       />
     );
   if (pathname === "/dashboard") return <Dashboard />;
+  if (pathname === "/library") return <GoalCatalogManager />;
+  if (
+    pathname === "/individual/plan" ||
+    pathname.startsWith("/individual/plan/")
+  )
+    return <RealInterventionPlans />;
   if (pathname === "/students")
     return (
       <>
@@ -80,12 +90,17 @@ function Content() {
   return <PhaseTwo />;
 }
 export function AppRoutes() {
+  const { user, loading } = useAuth();
+  if (loading)
+    return <div className="loading-screen"><Spin size="large" /><p>Đang kiểm tra phiên đăng nhập…</p></div>;
   return (
     <Routes>
-      <Route element={<AppLayout />}>
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+      <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Content />} />
       </Route>
+      <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
     </Routes>
   );
 }

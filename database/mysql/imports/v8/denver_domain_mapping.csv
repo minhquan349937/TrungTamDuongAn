@@ -1,0 +1,47 @@
+﻿source_domain_id,source_section,domain_id,domain_name,level_domain_id
+DM0001,Giao tiếp tiếp nhận,DM0001,Giao tiếp tiếp nhận,LD0001
+DM0002,Giao tiếp diễn đạt,DM0002,Giao tiếp diễn đạt,LD0002
+DM0003,Các kỹ năng xã hội,DM0003,Kỹ năng xã hội,LD0003
+DM0004,Bắt chước,DM0004,Bắt chước,LD0004
+DM0005,Nhận thức,DM0005,Nhận thức,LD0005
+DM0006,Chơi,DM0006,Chơi,LD0006
+DM0007,Vận động tinh,DM0007,Vận động tinh,LD0007
+DM0008,Vận động thô,DM0008,Vận động thô,LD0008
+DM0009,Hành vi,DM0009,Hành vi,LD0009
+DM0010,Tự lập: ăn,DM0010,Tự lập,LD0010
+DM0011,Tự lập: mặc,DM0010,Tự lập,LD0010
+DM0012,Tự lập: chuẩn bị,DM0010,Tự lập,LD0010
+DM0013,Tự lập: các việc vặt,DM0010,Tự lập,LD0010
+DM0014,Giao tiếp tiếp nhận,DM0001,Giao tiếp tiếp nhận,LD0011
+DM0015,Giao tiếp diễn đạt,DM0002,Giao tiếp diễn đạt,LD0012
+DM0016,Hành vi chú ý chung,DM0003,Kỹ năng xã hội,LD0013
+DM0017,Các kỹ năng xã hội: người lớn hoặc bạn cùng lứa,DM0003,Kỹ năng xã hội,LD0013
+DM0018,Các kỹ năng xã hội với các bạn cùng lứa,DM0003,Kỹ năng xã hội,LD0013
+DM0019,Bắt chước,DM0004,Bắt chước,LD0014
+DM0020,Nhận thức,DM0005,Nhận thức,LD0015
+DM0021,Chơi: trình bày,DM0006,Chơi,LD0016
+DM0022,Chơi: chơi độc lập,DM0006,Chơi,LD0016
+DM0023,Vận động tinh,DM0007,Vận động tinh,LD0017
+DM0024,Vận động thô,DM0008,Vận động thô,LD0018
+DM0025,Tự lập: ăn,DM0010,Tự lập,LD0019
+DM0026,Tự lập: mặc,DM0010,Tự lập,LD0019
+DM0027,Tự lập: vệ sinh,DM0010,Tự lập,LD0019
+DM0028,Tự lập: các việc khác,DM0010,Tự lập,LD0019
+DM0029,Giao tiếp tiếp nhận,DM0001,Giao tiếp tiếp nhận,LD0020
+DM0030,Giao tiếp diễn đạt,DM0002,Giao tiếp diễn đạt,LD0021
+DM0031,Các kỹ năng xã hội: Người lớn và các bạn cùng lứa,DM0003,Kỹ năng xã hội,LD0022
+DM0032,Nhận thức,DM0005,Nhận thức,LD0023
+DM0033,Chơi,DM0006,Chơi,LD0024
+DM0034,Vận Động Tinh,DM0007,Vận động tinh,LD0025
+DM0035,Vận động thô,DM0008,Vận động thô,LD0026
+DM0036,Tự lập,DM0010,Tự lập,LD0027
+DM0037,Tự lập : Vệ sinh,DM0010,Tự lập,LD0027
+DM0038,Tự lập : Việc khác,DM0010,Tự lập,LD0027
+DM0039,GIAO TIẾP TIẾP NHẬN,DM0001,Giao tiếp tiếp nhận,LD0028
+DM0040,GIAO TIẾP DIỄN ĐẠT,DM0002,Giao tiếp diễn đạt,LD0029
+DM0041,CÁC KỸ NĂNG XÃ HỘI,DM0003,Kỹ năng xã hội,LD0030
+DM0042,NHẬN THỨC,DM0005,Nhận thức,LD0031
+DM0043,CHƠI,DM0006,Chơi,LD0032
+DM0044,VẬN ĐỘNG TINH,DM0007,Vận động tinh,LD0033
+DM0045,VẬN ĐỘNG THÔ,DM0008,Vận động thô,LD0034
+DM0046,TỰ LẬP,DM0010,Tự lập,LD0035

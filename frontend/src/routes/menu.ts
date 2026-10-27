@@ -98,6 +98,7 @@ export const teacherMenu: MenuGroup[] = [
     items: items([
       ["Tổng quan cá nhân", "/dashboard"],
       ["Học sinh được phân công", "/students"],
+      ["Kế hoạch can thiệp", "/individual/plan"],
       ["Lớp cá nhân phụ trách", "/individual"],
       ["Lớp nhóm phụ trách", "/groups"],
       ["Lớp bán trú phụ trách", "/daycare"],

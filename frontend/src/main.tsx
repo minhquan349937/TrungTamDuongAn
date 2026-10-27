@@ -12,6 +12,7 @@ import "@fontsource/be-vietnam-pro/latin-500.css";
 import "@fontsource/be-vietnam-pro/latin-600.css";
 import "@fontsource/be-vietnam-pro/latin-700.css";
 import { DemoProvider } from "./hooks/useDemo";
+import { AuthProvider } from "./auth/AuthProvider";
 import { AppRoutes } from "./routes/AppRoutes";
 import "./styles.css";
 class ErrorBoundary extends React.Component<
@@ -45,7 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           colorTextSecondary: "#64748b",
           borderRadius: 9,
           fontFamily: '"Be Vietnam Pro", sans-serif',
-          fontSize: 13,
+          fontSize: 14,
           controlHeight: 38,
         },
         components: {
@@ -56,11 +57,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     >
       <AntApp>
         <ErrorBoundary>
-          <DemoProvider>
-            <HashRouter>
-              <AppRoutes />
-            </HashRouter>
-          </DemoProvider>
+          <HashRouter>
+            <AuthProvider>
+              <DemoProvider>
+                <AppRoutes />
+              </DemoProvider>
+            </AuthProvider>
+          </HashRouter>
         </ErrorBoundary>
       </AntApp>
     </ConfigProvider>

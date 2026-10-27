@@ -8,13 +8,34 @@ import type {
   Leave,
   Student,
 } from "../types";
-import { createSeed } from "../mocks/seed";
 import { actorId, requireAdmin, visibleData } from "./authorization";
 import { today, uid } from "../utils/format";
 const KEY = "duongan.demo.v1";
+const CLEARED_DEMO_KEY = "duongan.demo.cleared.v1";
+function emptyDatabase(): Database {
+  return {
+    version: 1,
+    students: [],
+    staff: [],
+    parents: [],
+    classes: [],
+    sessions: [],
+    fees: [],
+    leaves: [],
+    notices: [],
+    checkins: {},
+    admins: [],
+    studentGoals: [],
+  };
+}
 export function loadDatabase(): Database {
   const raw = localStorage.getItem(KEY);
-  if (!raw) return createSeed();
+  if (localStorage.getItem(CLEARED_DEMO_KEY) !== "1") {
+    localStorage.removeItem(KEY);
+    localStorage.setItem(CLEARED_DEMO_KEY, "1");
+    return emptyDatabase();
+  }
+  if (!raw) return emptyDatabase();
   try {
     const db = JSON.parse(raw);
     if (
@@ -34,6 +55,9 @@ export function loadDatabase(): Database {
       typeof db.checkins !== "object"
     )
       throw Error();
+    // Add the new feature without replacing previously saved demo records.
+    if (db.studentGoals === undefined) db.studentGoals = [];
+    if (!Array.isArray(db.studentGoals)) throw Error();
     return db;
   } catch {
     throw new Error(
@@ -147,6 +171,7 @@ export const mockService = {
       );
       next.sessions.forEach((s) => delete s.attendance[id]);
       next.fees = next.fees.filter((f) => f.studentId !== id);
+      next.studentGoals = next.studentGoals.filter((g) => g.studentId !== id);
     }
     if (
       collection === "staff" &&
@@ -216,7 +241,7 @@ export const mockService = {
   },
   reset(role: Role) {
     requireAdmin(role);
-    return createSeed();
+    return emptyDatabase();
   },
   view: visibleData,
   newId: uid,

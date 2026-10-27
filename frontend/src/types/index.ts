@@ -66,6 +66,25 @@ export interface Notice {
   date: string;
   body: string;
 }
+export interface InterventionGoal {
+  id: string;
+  programId: string;
+  programName: string;
+  domainId: string;
+  domainName: string;
+  ageId: string;
+  ageLabel: string;
+  code: string;
+  group: string;
+  description: string;
+}
+export interface StudentGoal {
+  id: string;
+  studentId: string;
+  goal: InterventionGoal;
+  addedAt: string;
+  addedBy: string;
+}
 export interface Database {
   version: number;
   students: Student[];
@@ -78,6 +97,7 @@ export interface Database {
   notices: Notice[];
   checkins: Record<string, string[]>;
   admins: { id: string; name: string; email: string }[];
+  studentGoals: StudentGoal[];
 }
 export type Collection =
   "students" | "staff" | "classes" | "sessions" | "fees" | "leaves";

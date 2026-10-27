@@ -1,19 +1,68 @@
 import { test, expect } from "@playwright/test";
 import { adminMenu } from "../src/routes/menu";
+import { createSeed } from "../src/mocks/seed";
 test.beforeEach(async ({ page }) => {
+  let currentRole: "ADMIN" | "TEACHER" | "PARENT" | null = null;
+  await page.route("**/api/auth/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/auth/csrf") {
+      await route.fulfill({ json: { token: "test-csrf" } });
+      return;
+    }
+    if (path === "/api/auth/login") {
+      const email = route.request().postDataJSON().email as string;
+      currentRole = email.startsWith("admin") ? "ADMIN" : email.startsWith("teacher") ? "TEACHER" : "PARENT";
+    } else if (path === "/api/auth/logout") {
+      currentRole = null;
+      await route.fulfill({ status: 204 });
+      return;
+    }
+    if (!currentRole) {
+      await route.fulfill({ status: 401, json: { message: "Unauthenticated" } });
+      return;
+    }
+    await route.fulfill({ json: {
+      id: "00000000-0000-0000-0000-000000000101",
+      email: `${currentRole.toLowerCase()}@duongan.local`,
+      displayName: currentRole,
+      role: currentRole,
+    } });
+  });
+  await page.addInitScript((seed) => {
+    if (localStorage.getItem("duongan.demo.cleared.v1") !== "1") {
+      localStorage.setItem("duongan.demo.cleared.v1", "1");
+      localStorage.setItem("duongan.demo.v1", JSON.stringify(seed));
+    }
+  }, createSeed());
   page.on("pageerror", (error) => {
     throw error;
   });
+  await loginAs(page, "Quản trị viên");
 });
+const roleAccounts = {
+  "Quản trị viên": ["admin@duongan.local", "Admin123!"],
+  "Giáo viên": ["teacher@duongan.local", "Teacher123!"],
+  "Phụ huynh": ["parent@duongan.local", "Parent123!"],
+} as const;
+async function loginAs(page: import("@playwright/test").Page, role: keyof typeof roleAccounts) {
+  const [email, password] = roleAccounts[role];
+  await page.goto("/#/login");
+  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Mật khẩu", { exact: true }).fill(password);
+  const csrfRefresh = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === "/api/auth/csrf" && response.request().method() === "GET"
+  );
+  await page.getByRole("button", { name: "Đăng nhập", exact: true }).click();
+  await csrfRefresh;
+  await expect(page).toHaveURL(/#\/dashboard/);
+}
 async function selectRole(
   page: import("@playwright/test").Page,
   label: string,
 ) {
-  await page.locator(".role-select").click();
-  await page
-    .locator(".ant-select-item-option-content")
-    .getByText(label, { exact: true })
-    .click();
+  await page.locator(".account-button").click();
+  await page.getByRole("button", { name: "Đăng xuất", exact: true }).click();
+  await loginAs(page, label as keyof typeof roleAccounts);
 }
 test("dashboard, menus, search, filters, pagination and responsive layout", async ({
   page,
@@ -61,7 +110,7 @@ test("dashboard, menus, search, filters, pagination and responsive layout", asyn
   await page.goto("/#/dashboard");
   await page.getByRole("button", { name: "Mở menu", exact: true }).click();
   await expect(page.locator(".sidebar")).toBeInViewport();
-  await page.getByRole("button", { name: "Đóng menu", exact: true }).click();
+  await page.locator(".sidebar-scrim").click({ position: { x: 380, y: 400 } });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -264,7 +313,7 @@ test("teacher and parent authorization, child switch and check-in", async ({
     page.getByText("Bạn không có quyền truy cập", { exact: true }),
   ).toBeVisible();
 });
-test("all admin menu routes, chart rendering, tuition creation and reset", async ({
+test("all admin menu routes, chart rendering and tuition creation", async ({
   page,
 }) => {
   await page.goto("/");
@@ -294,15 +343,5 @@ test("all admin menu routes, chart rendering, tuition creation and reset", async
   await page.getByRole("button", { name: "Tạo mới", exact: true }).click();
   await expect(
     page.getByRole("cell", { name: /Khoản thu kiểm thử/ }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Khôi phục dữ liệu demo", exact: true })
-    .click();
-  await page.getByRole("button", { name: "Khôi phục", exact: true }).click();
-  await expect(
-    page.getByRole("cell", { name: /Khoản thu kiểm thử/ }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByText("Đã khôi phục dữ liệu mẫu", { exact: true }),
   ).toBeVisible();
 });

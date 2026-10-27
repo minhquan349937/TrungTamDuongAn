@@ -8,21 +8,22 @@ import {
   mockService,
 } from "../services/mockService";
 import { createSeed } from "../mocks/seed";
+import { useAuth } from "../auth/AuthProvider";
 type Context = {
   db: Database;
   view: Database;
   role: Role;
-  setRole: (role: Role) => void;
   child: string;
   setChild: (id: string) => void;
   run: (action: (db: Database) => Database, success?: string) => boolean;
 };
 const DemoContext = createContext<Context | null>(null);
 export function DemoProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [db, setDb] = useState<Database | null>(null),
     [error, setError] = useState(""),
-    [role, setRole] = useState<Role>("ADMIN"),
     [child, setChild] = useState("HS001");
+  const role: Role = user?.role ?? "ADMIN";
   const { message } = App.useApp();
   useEffect(() => {
     try {
@@ -59,18 +60,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
           <Button
             type="primary"
             onClick={() => {
-              try {
-                const data = createSeed();
-                persistDatabase(data);
-                setDb(data);
-                setError("");
-              } catch (e) {
-                setError((e as Error).message);
-              }
+              localStorage.removeItem("duongan.demo.v1");
+              window.location.reload();
             }}
-          >
-            Khôi phục dữ liệu mẫu
-          </Button>
+          >Xóa dữ liệu lưu trong trình duyệt</Button>
         }
       />
     );
@@ -87,7 +80,6 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         db,
         view: mockService.view(db, role, role === "PARENT" ? child : undefined),
         role,
-        setRole,
         child,
         setChild,
         run,

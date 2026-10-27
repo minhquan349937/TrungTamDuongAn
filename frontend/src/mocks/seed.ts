@@ -141,6 +141,7 @@ export function createSeed(): Database {
   }
   return {
     version: 1,
+    studentGoals: [],
     students,
     staff,
     parents,

@@ -12,6 +12,7 @@ import type { Student, Staff } from "../types";
 export function StudentsTable({ compact = false }: { compact?: boolean }) {
   const modal = useConfirm();
   const { db, view, role, run } = useDemo();
+  const nav = useNavigate();
   const [editor, setEditor] = useState<Student | null | undefined>(),
     [detail, setDetail] = useState<string>();
   const student = view.students.find((s) => s.id === detail);
@@ -164,7 +165,37 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
               </div>
             </div>
             <Tabs
+              defaultActiveKey="info"
               items={[
+                ...(role !== "PARENT"
+                  ? [
+                      {
+                        key: "goals",
+                        label: "Ngân hàng mục tiêu",
+                        children: (
+                          <div className="detail-list">
+                            <p>
+                              {
+                                view.studentGoals.filter(
+                                  (g) => g.studentId === student.id,
+                                ).length
+                              }{" "}
+                              mục tiêu trong ngân hàng của {student.name}.
+                            </p>
+                            <Button
+                              type="primary"
+                              onClick={() => {
+                                setDetail(undefined);
+                                nav(`/individual/plan/${student.id}?tab=bank`);
+                              }}
+                            >
+                              Mở ngân hàng mục tiêu
+                            </Button>
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
                 {
                   key: "info",
                   label: "Thông tin chung",

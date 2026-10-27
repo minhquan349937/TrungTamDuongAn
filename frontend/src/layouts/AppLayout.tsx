@@ -1,7 +1,6 @@
-import { useConfirm } from "../hooks/useConfirm";
 import { useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Button, Select, Modal, Popover, Input } from "antd";
+import { Button, Select, Popover, Input } from "antd";
 import {
   Sprout,
   LayoutDashboard,
@@ -18,15 +17,12 @@ import {
   Bell,
   Search,
   ArrowUpRight,
-  RotateCcw,
   Settings,
-  ShieldCheck,
 } from "lucide-react";
 import { getMenu } from "../routes/menu";
 import { useDemo } from "../hooks/useDemo";
-import { mockService } from "../services/mockService";
-import type { Role } from "../types";
 import { Avatar } from "../components/ui";
+import { useAuth } from "../auth/AuthProvider";
 const icons = {
   system: LayoutDashboard,
   building: Building2,
@@ -38,10 +34,10 @@ const icons = {
   library: BookOpen,
 };
 export function AppLayout() {
-  const modal = useConfirm();
-  const { db, role, setRole, child, setChild, run } = useDemo(),
+  const { db, role, child, setChild } = useDemo(),
     nav = useNavigate(),
     location = useLocation();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
     [expanded, setExpanded] = useState<string[]>([
@@ -58,25 +54,7 @@ export function AppLayout() {
         : role === "TEACHER"
           ? "Giáo viên"
           : "Phụ huynh";
-  const name =
-    role === "ADMIN"
-      ? db.admins[0].name
-      : role === "TEACHER"
-        ? (db.staff.find((s) => s.id === "NV001")?.name ?? "Giáo viên")
-        : db.parents[0].name;
-  function reset() {
-    modal.confirm({
-      title: "Khôi phục dữ liệu demo?",
-      content:
-        "Tất cả thay đổi trong trình duyệt này sẽ được thay bằng dữ liệu mẫu ban đầu.",
-      okText: "Khôi phục",
-      cancelText: "Hủy",
-      onOk: () => {
-        run(() => mockService.reset(role), "Đã khôi phục dữ liệu mẫu");
-        setChild("HS001");
-      },
-    });
-  }
+  const name = user?.displayName ?? "Tài khoản";
   return (
     <div
       className={
@@ -112,19 +90,16 @@ export function AppLayout() {
         >
           <PanelLeftClose size={16} />
         </button>
-        <div className="center-label">
-          <Building2 size={16} />
-          <span>
-            Trung tâm Dương An<small>Cơ sở chính · Hà Nội</small>
-          </span>
-          <ChevronDown size={14} />
-        </div>
         <p className="nav-caption">KHÔNG GIAN LÀM VIỆC</p>
         <nav>
           {menu.map((g) => {
             const Icon = icons[g.icon as keyof typeof icons],
               open = expanded.includes(g.label),
-              active = g.items.some((i) => i.path === location.pathname);
+              active = g.items.some(
+                (i) =>
+                  i.path === location.pathname ||
+                  location.pathname.startsWith(i.path + "/"),
+              );
             return (
               <div className="nav-group" key={g.label}>
                 <button
@@ -162,24 +137,11 @@ export function AppLayout() {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <div className="demo-card">
-            <span>
-              <ShieldCheck size={18} /> Không gian demo
-            </span>
-            <p>Dữ liệu giả, trải nghiệm thật.</p>
-            <span className="demo-tag">CHỈ DÙNG ĐỂ MINH HỌA</span>
-          </div>
           {role === "ADMIN" && (
-            <>
-              <button onClick={() => nav("/settings")}>
-                <Settings size={18} />
-                <span>Thiết lập trung tâm</span>
-              </button>
-              <button onClick={reset}>
-                <RotateCcw size={17} />
-                <span>Khôi phục dữ liệu demo</span>
-              </button>
-            </>
+            <button onClick={() => nav("/settings")}>
+              <Settings size={18} />
+              <span>Thiết lập trung tâm</span>
+            </button>
           )}
           <small>© {new Date().getFullYear()} Dương An</small>
         </div>
@@ -252,26 +214,13 @@ export function AppLayout() {
               </button>
             </Popover>
             <span className="header-divider" />
-            <Select
-              className="role-select"
-              aria-label="Chuyển vai trò demo"
-              value={role}
-              onChange={(v: Role) => {
-                setRole(v);
-                nav("/dashboard");
-              }}
-              options={[
-                { value: "ADMIN", label: "Quản trị viên" },
-                { value: "TEACHER", label: "Giáo viên" },
-                { value: "PARENT", label: "Phụ huynh" },
-              ]}
-            />
+            <span className="role-label">{roleName}</span>
             <Popover
               trigger="click"
               content={
                 <div>
                   <b>{name}</b>
-                  <p>Tài khoản {roleName.toLowerCase()} minh họa</p>
+                  <p>{user?.email}</p>
                   <Button
                     onClick={() =>
                       nav(
@@ -285,6 +234,7 @@ export function AppLayout() {
                   >
                     Xem hồ sơ tài khoản
                   </Button>
+                  <Button className="account-logout" onClick={async () => { await logout(); nav("/login", { replace: true }); }}>Đăng xuất</Button>
                 </div>
               }
             >
@@ -319,7 +269,7 @@ export function AppLayout() {
         <footer className="page-footer">
           <span>Dương An · Cùng con lớn lên mỗi ngày</span>
           <span>
-            <i /> Bản demo · Dữ liệu giả lập
+            <i /> {location.pathname.startsWith("/individual/plan") ? "Kế hoạch can thiệp" : "Bản demo · Dữ liệu giả lập"}
           </span>
         </footer>
       </div>
