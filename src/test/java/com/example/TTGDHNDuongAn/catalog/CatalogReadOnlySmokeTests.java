@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.example.TTGDHNDuongAn.repository.GoalCatalogRepository;
 import com.example.TTGDHNDuongAn.repository.PlanGoalRepository;
-import com.example.TTGDHNDuongAn.repository.StudentGoalBankRepository;
 import com.example.TTGDHNDuongAn.service.InterventionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -31,12 +30,15 @@ class CatalogReadOnlySmokeTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired GoalCatalogRepository catalog;
     @Autowired PlanGoalRepository plans;
-    @Autowired StudentGoalBankRepository bank;
     @Autowired InterventionService workflow;
 
     @Test
     @Transactional(readOnly = true)
     void readsMigratedCatalogAndAssignmentColumnsThroughTheRealBackend() throws Exception {
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() " +
+            "AND table_name IN ('student_goal_bank','goal_criteria','progress_records')",Integer.class));
+        assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM plan_goals pg WHERE pg.status<>COALESCE(" +
+            "(SELECT e.result_status FROM goal_evaluations e WHERE e.plan_goal_id=pg.id ORDER BY attempt_no DESC LIMIT 1),'NOT_STARTED')",Integer.class));
         assertEquals(5, jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.columns " +
                 "WHERE table_schema=DATABASE() AND table_name IN ('programs','program_levels','domains','goals','specific_goals') " +
                 "AND column_name='id' AND data_type='varchar' AND character_maximum_length=8", Integer.class));
@@ -46,7 +48,6 @@ class CatalogReadOnlySmokeTests {
         assertNotNull(catalog.goals("DM000000", "", 0, 20));
         assertTrue(catalog.goalHeader("GL000000").isEmpty());
         assertTrue(plans.list("00000000-0000-0000-0000-000000000000").isEmpty());
-        assertTrue(bank.list("00000000-0000-0000-0000-000000000000").isEmpty());
         var school=workflow.students("");
         for(var student:school.stream().limit(3).toList()) assertEquals(student.id(),workflow.workspace(student.id()).student().id());
         for(var program:workflow.programs()) assertNotNull(workflow.domains(program.id()));

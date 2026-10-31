@@ -137,7 +137,7 @@ class CatalogWriteApiTests {
                 UUID.randomUUID().toString(),plan,other.id(),specific.id(),actor));
         var original = jdbc.queryForList("SELECT id,goal_snapshot,criteria_snapshot FROM plan_goals WHERE plan_id=? ORDER BY id",plan);
         String assignment=original.getFirst().get("id").toString();
-        jdbc.update("INSERT INTO progress_records(id,plan_goal_id,observed_at,recorded_by) VALUES(?,?,UTC_TIMESTAMP(6),?)",UUID.randomUUID().toString(),assignment,actor);
+        jdbc.update("INSERT INTO goal_evaluations(id,plan_goal_id,attempt_no,evaluated_at,evaluated_by) VALUES(?,?,1,UTC_TIMESTAMP(6),?)",UUID.randomUUID().toString(),assignment,actor);
         mvc.perform(put("/api/goals/"+g.id()).with(user(admin)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"code\":\"TEST.1\",\"name\":\"Changed\",\"displayOrder\":1}"))
                 .andExpect(status().isOk());
@@ -146,7 +146,7 @@ class CatalogWriteApiTests {
         assertThrows(DataAccessException.class, () -> jdbc.update("DELETE FROM specific_goals WHERE id=?",specific.id()));
         mvc.perform(delete("/api/goals/"+g.id()).with(user(admin)).with(csrf())).andExpect(status().isNoContent());
         assertEquals(original,jdbc.queryForList("SELECT id,goal_snapshot,criteria_snapshot FROM plan_goals WHERE plan_id=? ORDER BY id",plan));
-        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM progress_records WHERE plan_goal_id=?",Integer.class,assignment));
+        assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM goal_evaluations WHERE plan_goal_id=?",Integer.class,assignment));
         mvc.perform(get("/api/plans/"+plan+"/goals").with(user(admin))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2));
     }

@@ -91,6 +91,7 @@ export function canVisit(role: Role, path: string) {
           "",
           "dashboard",
           "students",
+          "reports",
           "schedule",
           "attendance",
           "notifications",

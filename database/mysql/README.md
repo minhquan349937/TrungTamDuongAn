@@ -1,5 +1,9 @@
 # MySQL — thiết kế Dương An 1.1
 
+**V12 hiện tại:** [Nhận xét kế hoạch hằng tháng](PLAN_EVALUATIONS_V12.md). `plan_evaluations` cho phép giáo viên công bố nhận xét nguyên bản trong cổng phụ huynh. Chạy `apply_plan_evaluations.ps1` để kiểm tra schema hoặc `-Apply` để sao lưu và nâng cấp.
+
+**V13:** thay mục tiêu trong một kế hoạch qua `supersedes_id`, giữ bản ghi và lịch sử đánh giá cũ. Chạy `apply_plan_goal_replacement.ps1` sau V12.
+
 **Hiện tại: [ngân hàng mục tiêu V8 — N–N](GOAL_BANK_V8.md)** đã áp dụng trực tiếp trên Docker `127.0.0.1:3308`, database `duong_an_v11` ngày 27/10/2026. Dữ liệu nghiệp vụ đã reset; giữ 3 tài khoản đăng nhập cùng mật khẩu BCrypt. Denver/VB mới đã chuẩn bị trong `imports/v8/`, chưa nhập lại vào dữ liệu sử dụng. Không chạy lại INSERT 1–N cũ.
 
 V8 thêm `program_level_domains`; lĩnh vực thuộc chương trình và dùng chung giữa các cấp độ, mục tiêu thuộc cặp cấp độ–lĩnh vực. Backend có Entity/Repository JPA, giao diện thư viện và kế hoạch dùng API theo LD. Xem báo cáo V8 để biết cấu trúc, file thay đổi, kiểm thử và cách nhập dữ liệu.
@@ -10,7 +14,8 @@ Chạy kiểm thử V8 khi database development vẫn rỗng: `powershell -Execu
 
 **Luồng ứng dụng mới:** [Kế hoạch can thiệp — 5 trang](INTERVENTION_WORKFLOW.md), hoàn thành lưu `learning_plans` + `plan_goals` trong một transaction; không cần migration thêm sau V7.
 
-**Thiết kế hiện tại: [catalog V6](GOAL_BANK_V6.md) + [ngân hàng theo học sinh V7](GOAL_BANK_FLOW.md)** — đã áp dụng trên MySQL local `127.0.0.1:3306` và Docker `127.0.0.1:3308` ngày 27/10/2026, schema `duong_an_v11`. ID catalog `VARCHAR(8)`, mục tiêu cha bắt buộc trong kế hoạch, migration có ánh xạ và bộ đếm ID có khóa giao dịch. V7 thêm `student_goal_bank` cho bước xem lại/hoàn tất, giữ nguyên dữ liệu import. Backend mặc định dùng Docker; hai database không tự đồng bộ. Xem tài liệu V7 để biết API, dữ liệu thực tế, backup và kiểm thử. Các mô tả V4/V5 bên dưới là lịch sử; kiểm thử mới dùng `test_goal_bank.ps1`, không dùng bộ `constraints.sql` cũ trên schema hiện tại.
+**Thiết kế hiện tại: [kế hoạch và đánh giá V11](PLAN_EVALUATIONS_V11.md)** — học sinh → kế hoạch → nhiều mục tiêu → nhiều lần đánh giá theo phần trăm. `goal_evaluations` thay `goal_criteria`/`progress_records`; bỏ ngân hàng cá nhân `student_goal_bank`. Catalog Denver/VB giữ nguyên. Dùng `apply_goal_evaluations.ps1` để kiểm tra và `-Apply` để backup/chuyển đổi; không chạy lại V7 trên V11. Các mô tả schema cũ bên dưới là tài liệu lịch sử trước V11.
+
 
 **Lịch sử V5:** xem [thiết kế trung gian](GOAL_BANK_V5.md). V5 thêm `program_levels`, chuyển cấu trúc Denver/VB về `programs → program_levels → domains → goals → specific_goals`. Các con số 29 bảng và mô tả V4 bên dưới là trạng thái trước V5; local và Docker hiện đã ở V6.
 
@@ -29,6 +34,8 @@ Triển khai [bản điều chỉnh 1.1](../DESIGN_v1.1_chinh_sua.md) thành **2
 | [V5__goal_bank_hierarchy.sql](migrations/V5__goal_bank_hierarchy.sql) | Đổi cấu trúc ngân hàng mục tiêu và snapshot giao mục tiêu; có guard từ chối dữ liệu cũ |
 | [V6__catalog_short_ids.sql](migrations/V6__catalog_short_ids.sql) | Ánh xạ ID ngắn, FK cha/con, bộ đếm ID và snapshot v3 |
 | [V7__student_goal_bank.sql](migrations/V7__student_goal_bank.sql) | Ngân hàng riêng từng học sinh, snapshot và khóa chống trùng |
+| [V9__student_profile_codes_and_relationships.sql](migrations/V9__student_profile_codes_and_relationships.sql) | Bộ đếm mã HS001… và quan hệ Ông/Bà; áp dụng sau V8 trên database hiện hữu |
+| [V10__staff_guardian_codes.sql](migrations/V10__staff_guardian_codes.sql) | Khởi tạo bộ đếm tuần tự cho NV và PH từ các mã số hiện có |
 | [GOAL_BANK_FLOW.md](GOAL_BANK_FLOW.md) | Luồng chọn Denver/VB, API preview/complete và kết quả triển khai V7 |
 | [apply_student_goal_bank.ps1](apply_student_goal_bank.ps1) | Kiểm tra, backup và áp dụng V7 lên Docker V6 hiện hữu |
 | [GOAL_BANK_V6.md](GOAL_BANK_V6.md) | Báo cáo hiện tại: bảng trước/sau, ERD, API, file thay đổi, backup và khôi phục |
@@ -169,7 +176,7 @@ VALUES(UUID(),@plan_id,@specific_goal_id,JSON_OBJECT(),JSON_OBJECT(),@authentica
 
 UPDATE không được thay snapshot, đối tượng, người/thời điểm giao hoặc `supersedes_id`. Khi chủ động áp dụng tiêu chí mới, service mở transaction, khóa kế hoạch và bản giao cũ bằng `SELECT ... FOR UPDATE`, đổi bản cũ sang `PAUSED`, rồi INSERT bản mới với `supersedes_id` bằng ID cũ. Trigger yêu cầu cùng kế hoạch/mục tiêu mẫu và một bản cũ chỉ được thay thế trực tiếp một lần. Quan sát cũ vẫn trỏ vào bản cũ; không chuyển sang tiêu chí mới. Bản đã bị thay thế phải giữ trạng thái `PAUSED`. API không cho thêm quan sát vào phiên bản đã bị thay thế.
 
-`learning_plans.status`: `DRAFT`, `ACTIVE`, `COMPLETED`, `PAUSED`, `CANCELLED`. `plan_goals.status`: `NOT_STARTED`, `IN_PROGRESS`, `ACHIEVED`, `PAUSED`.
+`learning_plans.status`: `DRAFT`, `ACTIVE`, `COMPLETED`, `PAUSED`, `CANCELLED`. `plan_goals.status` từ V11: `NOT_STARTED`, `NOT_ACHIEVED`, `ACHIEVED`, được đồng bộ từ lần đánh giá mới nhất.
 
 `measurement_type`: `COUNT`, `OPPORTUNITIES`, `PERCENTAGE`, `DURATION`. Backend kiểm tra trường bắt buộc theo từng kiểu. `support_level`: `INDEPENDENT`, `VERBAL`, `GESTURAL`, `MODEL`, `PARTIAL_PHYSICAL`, `FULL_PHYSICAL`. Đây là danh mục triển khai ban đầu, không ngầm xác định thuật toán xếp hạng hỗ trợ.
 

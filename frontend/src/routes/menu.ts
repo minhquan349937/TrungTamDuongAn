@@ -38,14 +38,12 @@ export const adminMenu: MenuGroup[] = [
       ["Hồ sơ nhân sự", "/staff"],
       ["Hồ sơ học sinh", "/students"],
       ["Hồ sơ phụ huynh", "/parents"],
-      ["Hồ sơ chuyển cơ sở", "/transfers"],
     ]),
   },
   {
     label: "Quản lý lớp cá nhân",
     icon: "individual",
     items: items([
-      ["Học sinh can thiệp cá nhân", "/individual"],
       ["Phân công giáo viên", "/individual/assign"],
       ["Kế hoạch can thiệp", "/individual/plan"],
       ["Báo cáo cá nhân", "/individual/report"],
@@ -124,6 +122,7 @@ export const parentMenu: MenuGroup[] = [
     items: items([
       ["Tổng quan phụ huynh", "/dashboard"],
       ["Hồ sơ con", "/students"],
+      ["Nhận xét kế hoạch", "/reports"],
       ["Lịch học của con", "/schedule"],
       ["Điểm danh và chuyên cần", "/attendance"],
       ["Thông báo", "/notifications"],

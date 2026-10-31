@@ -1,7 +1,7 @@
 package com.example.TTGDHNDuongAn.service;
 
 import com.example.TTGDHNDuongAn.dto.InterventionDtos.*;
-import com.example.TTGDHNDuongAn.dto.GoalBankDtos;
+import com.example.TTGDHNDuongAn.dto.GoalSelectionDtos;
 import com.example.TTGDHNDuongAn.repository.*;
 import com.example.TTGDHNDuongAn.repository.CatalogIdGenerator.Kind;
 import java.nio.charset.StandardCharsets;
@@ -19,14 +19,15 @@ public class InterventionService {
     private final InterventionRepository repository;
     private final StudentPlanRepository plans;
     private final PlanGoalRepository goals;
-    private final StudentGoalBankRepository bank;
-    private final StudentGoalBankService reviews;
+    private final GoalTargetResolver targets;
     private final GoalCatalogRepository catalog;
     private final GoalSelectionPolicy policy;
+    private final StudentGoalHistoryService history;
     private final ObjectMapper mapper=new ObjectMapper();
     public InterventionService(InterventionRepository repository,StudentPlanRepository plans,PlanGoalRepository goals,
-            StudentGoalBankRepository bank,StudentGoalBankService reviews,GoalCatalogRepository catalog,GoalSelectionPolicy policy) {
-        this.repository=repository; this.plans=plans; this.goals=goals; this.bank=bank; this.reviews=reviews; this.catalog=catalog; this.policy=policy;
+            GoalTargetResolver targets,GoalCatalogRepository catalog,GoalSelectionPolicy policy,StudentGoalHistoryService history) {
+        this.repository=repository; this.plans=plans; this.goals=goals; this.targets=targets; this.catalog=catalog; this.policy=policy;
+        this.history=history;
     }
     public List<StudentSummary> students(String q) {
         if(q==null || q.length()>100) throw bad("Từ khóa tối đa 100 ký tự.");
@@ -39,7 +40,7 @@ public class InterventionService {
         var assigned=goals.listForStudent(studentId);
         var byPlan=assigned.stream().collect(java.util.stream.Collectors.groupingBy(com.example.TTGDHNDuongAn.dto.PlanGoalDtos.AssignedGoal::planId));
         var planViews=plans.plans(studentId).stream().map(plan->new PlanView(plan,byPlan.getOrDefault(plan.id(),List.of()))).toList();
-        return new Workspace(student,planViews,bank.list(studentId));
+        return new Workspace(student,planViews);
     }
     public List<ProgramSummary> programs() { return repository.programs(); }
     public List<DomainGroup> domains(String id) {
@@ -59,8 +60,13 @@ public class InterventionService {
     @Transactional(readOnly=true)
     public Review preview(String studentId,Draft draft) {
         validate(draft);
-        var checked=reviews.preview(studentId,new GoalBankDtos.ReviewRequest(draft.programId(),draft.selections()));
-        return review(studentId,draft,checked.items());
+        uuid(studentId);
+        if(repository.student(studentId).isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy học sinh.");
+        history.requireSelectable(studentId,draft.selections());
+        var checked=targets.resolveAll(draft.selections());
+        var unique=new LinkedHashMap<String,GoalSelectionDtos.Selection>();
+        checked.forEach(item->unique.putIfAbsent(item.key(),item));
+        return review(studentId,draft,List.copyOf(unique.values()));
     }
     @Transactional
     public Saved complete(String studentId,Complete request,String actorId) {
@@ -78,10 +84,9 @@ public class InterventionService {
             for(var target:draft.selections()) requestedKeys.add(key(target.goalId(),target.specificGoalId()));
             var savedKeys=new HashSet<String>();
             assigned.forEach(g->savedKeys.add(key(g.goalId(),g.specificGoalId())));
-            boolean programMatches=assigned.stream().allMatch(g->draft.programId().equals(g.goalSnapshot().path("program_id").asText()));
             if(!saved.plan().studentId().equals(studentId) || !saved.actorId().equals(actorId)
                     || !saved.plan().name().equals(draft.name().trim()) || !saved.plan().startDate().equals(draft.startDate())
-                    || !savedKeys.equals(requestedKeys) || !programMatches) throw conflict("Lượt hoàn tất này đã được dùng cho lựa chọn khác.");
+                    || !savedKeys.equals(requestedKeys)) throw conflict("Lượt hoàn tất này đã được dùng cho lựa chọn khác.");
             return new Saved(new PlanView(saved.plan(),assigned),true);
         }
         var checked=preview(studentId,draft);
@@ -101,9 +106,9 @@ public class InterventionService {
             Kind.GOAL.validate(target.goalId()); if(target.specificGoalId()!=null) Kind.SPECIFIC.validate(target.specificGoalId());
         }
     }
-    private Review review(String studentId,Draft draft,List<GoalBankDtos.Selection> items) {
+    private Review review(String studentId,Draft draft,List<GoalSelectionDtos.Selection> items) {
         try {
-            var canonical=items.stream().sorted(Comparator.comparing(GoalBankDtos.Selection::key)).toList();
+            var canonical=items.stream().sorted(Comparator.comparing(GoalSelectionDtos.Selection::key)).toList();
             var input=List.of(studentId,draft.requestId(),draft.programId(),draft.name().trim(),draft.startDate().toString(),canonical);
             var token=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(mapper.writeValueAsString(input).getBytes(StandardCharsets.UTF_8)));
             return new Review(draft.requestId(),draft.programId(),draft.name().trim(),draft.startDate(),items,items.size(),token);

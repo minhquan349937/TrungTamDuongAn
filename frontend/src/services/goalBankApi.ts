@@ -6,7 +6,8 @@ export type Student = {
   admittedOn: string;
   status: string;
 };
-export type Plan = { id: string; studentId: string; name: string; startDate: string; status: string };
+export type Plan = { id: string; studentId: string; name: string; startDate: string; status: string;
+  endDate?: string | null; createdAt?: string; hasEvaluation?: boolean; sentToParent?: boolean };
 export type Program = { id: string; code: string; name: string; description: string | null };
 export type ProgramLevel = {
   id: string; programId: string; levelNumber: number; name: string;
@@ -36,9 +37,6 @@ export type GoalSelection = GoalTarget & {
   targetType: "GOAL" | "SPECIFIC_GOAL"; code: string; name: string; description: string | null;
   location: GoalLocation; ageMinMonths: number; ageMaxMonths: number;
 };
-export type BankEntry = { id: string; studentId: string; goalSnapshot: GoalSelection; selectedBy: string; createdAt: string };
-export type BankReview = { programId: string; items: GoalSelection[]; total: number; reviewToken: string };
-export type BankCompletion = { addedCount: number; alreadyPresentCount: number; bank: BankEntry[] };
 export type Page<T> = {
   content: T[]; page: number; size: number; totalElements: number; totalPages: number;
 };
@@ -48,8 +46,8 @@ export type AssignedGoal = {
   goalSnapshot: { code: string; name: string; description: string | null; target_type: string;
     goal_name?: string; goal_code?: string; program_id?: string; program_name?: string;
     domain_id?: string; domain_name?: string; domain_code?: string; program_level_id?: string;
-    level_number?: number; age_min_months?: number; age_max_months?: number };
-  criteriaSnapshot: Record<string, unknown>; status: string;
+    level_name?: string; level_number?: number; age_min_months?: number; age_max_months?: number };
+  criteriaSnapshot: Record<string, unknown>; status: string; achievementPercent?: number | null;
 };
 
 async function request<T>(url: string, body?: unknown, method = body === undefined ? "GET" : "POST"): Promise<T> {
@@ -93,12 +91,6 @@ export const goalBankApi = {
   assigned: (planId: string) => request<AssignedGoal[]>(`/api/plans/${planId}/goals`),
   assign: (planId: string, goalId: string, specificGoalId: string | null = null) =>
     request<AssignedGoal>(`/api/plans/${planId}/goals`, { goalId, specificGoalId }),
-  bank: (studentId: string) => request<BankEntry[]>(`/api/students/${studentId}/goal-bank`),
-  previewBank: (studentId: string, programId: string, selections: GoalTarget[]) =>
-    request<BankReview>(`/api/students/${studentId}/goal-bank/preview`, { programId, selections }),
-  completeBank: (studentId: string, review: BankReview) =>
-    request<BankCompletion>(`/api/students/${studentId}/goal-bank/complete`, {
-      programId: review.programId, reviewToken: review.reviewToken,
-      selections: review.items.map(({ goalId, specificGoalId }) => ({ goalId, specificGoalId })),
-    }),
+  replace: (planId: string, assignedId: string, goalId: string, specificGoalId: string | null = null) =>
+    request<AssignedGoal>(`/api/plans/${planId}/goals/${assignedId}/replace`, { goalId, specificGoalId }, "PUT"),
 };

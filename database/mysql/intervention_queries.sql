@@ -1,4 +1,4 @@
--- V8: SELECT templates for the five-page intervention workflow.
+-- V11: plan selection and percentage evaluation queries.
 -- These are Workbench examples. Backend uses bound parameters, not string concatenation.
 SET NAMES utf8mb4;
 USE duong_an_v11;
@@ -17,28 +17,23 @@ SELECT ROW_NUMBER() OVER(ORDER BY s.code,s.id) stt,s.id,s.code,s.full_name,
 FROM student s
 LEFT JOIN (
  SELECT lp.student_id,
-        COUNT(DISTINCT CASE WHEN lp.status='ACTIVE' AND pg.status IN('NOT_STARTED','IN_PROGRESS')
+        COUNT(DISTINCT CASE WHEN lp.status='ACTIVE' AND pg.status IN('NOT_STARTED','NOT_ACHIEVED')
             THEN IF(pg.specific_goal_id IS NULL,CONCAT('G:',pg.goal_id),CONCAT('S:',pg.specific_goal_id)) END) studying,
         COUNT(DISTINCT CASE WHEN pg.status='ACHIEVED'
             THEN IF(pg.specific_goal_id IS NULL,CONCAT('G:',pg.goal_id),CONCAT('S:',pg.specific_goal_id)) END) achieved
  FROM learning_plans lp JOIN plan_goals pg ON pg.plan_id=lp.id
  WHERE lp.status<>'CANCELLED'
-   AND NOT EXISTS(SELECT 1 FROM plan_goals newer WHERE newer.supersedes_id=pg.id)
  GROUP BY lp.student_id
 ) t ON t.student_id=s.id
 ORDER BY s.code,s.id;
 
--- 2. Student workspace. The backend assembles five tabs from these results.
+-- 2. Student workspace: plans and evaluation results, with no personal bank.
 -- Current: ACTIVE/DRAFT plans. History: all plans.
 SELECT id,student_id,name,start_date,status FROM learning_plans
 WHERE student_id=@student_id ORDER BY start_date DESC,id;
--- Goal bank: stored bank snapshots plus unique targets in non-cancelled plans.
-SELECT id,goal_snapshot,created_at FROM student_goal_bank
-WHERE student_id=@student_id ORDER BY created_at,id;
--- Completed/paused tabs: filter pg.status='ACHIEVED' / 'PAUSED' from this query.
+-- Completed/not-achieved tabs: filter pg.status='ACHIEVED' / 'NOT_ACHIEVED'.
 SELECT pg.* FROM plan_goals pg JOIN learning_plans lp ON lp.id=pg.plan_id
 WHERE lp.student_id=@student_id AND lp.status<>'CANCELLED'
- AND NOT EXISTS(SELECT 1 FROM plan_goals newer WHERE newer.supersedes_id=pg.id)
 ORDER BY pg.assigned_at,pg.id;
 
 -- 3. Program cards. Aggregate independently before joins to avoid multiplied counts.
@@ -74,7 +69,7 @@ JOIN domains d ON d.id=ld.domain_id JOIN programs p ON p.id=ld.program_id
 WHERE ld.id=@level_domain_id AND p.is_active=1 AND d.is_active=1 AND g.is_active=1
 ORDER BY g.display_order,g.id;
 
--- 4c. VB only: query children when opening a main goal. Allow main selection if none exist.
+-- 4c. VB only: query children when opening a main goal. Allow main and child selections as separate plan_goals.
 -- Backend skips this query completely for Denver.
 SELECT sg.id,sg.goal_id,sg.code,sg.description,
        COALESCE(sg.age_min_months,pl.age_min_months) age_min_months,
@@ -103,5 +98,9 @@ SELECT pg.id,pg.goal_id,pg.specific_goal_id,pg.status,
        pg.goal_snapshot->>'$.description' target_description
 FROM plan_goals pg JOIN learning_plans lp ON lp.id=pg.plan_id
 WHERE lp.student_id=@student_id AND lp.id=@plan_id
- AND NOT EXISTS(SELECT 1 FROM plan_goals newer WHERE newer.supersedes_id=pg.id)
 ORDER BY pg.assigned_at,pg.id;
+
+-- 6. All attempts are retained; the latest attempt determines plan_goals.status.
+SELECT e.*,u.display_name evaluator_name FROM goal_evaluations e
+JOIN app_user u ON u.id=e.evaluated_by JOIN plan_goals pg ON pg.id=e.plan_goal_id
+WHERE pg.plan_id=@plan_id ORDER BY pg.id,e.attempt_no DESC;

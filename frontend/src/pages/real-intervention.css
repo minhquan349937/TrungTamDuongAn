@@ -32,3 +32,15 @@
 .real-bank-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .student-bank .real-specific-list > div > label { grid-column: 2; grid-row: 1 / 3; }
 @media(max-width: 700px) { .real-section { padding: 18px; } .real-inline-form { flex-direction: column; } .real-specific-list > div { display: block; } }
+.ip-learning-note {
+  display: block;
+  width: fit-content;
+  margin: 5px 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ip-learning-note.new { color: #1d4ed8; background: #eff6ff; }
+.ip-learning-note.not-started { color: #64748b; background: #f1f5f9; }
+.ip-learning-note.learned { color: #92400e; background: #fffbeb; }

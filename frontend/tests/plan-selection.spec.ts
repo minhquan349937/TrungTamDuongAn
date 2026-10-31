@@ -19,17 +19,7 @@ test("five pages select multiple goals across fields and ages, then save one pla
   await page.getByRole("button", { name: /Học sinh kiểm thử An/ }).click();
   await expect(page).toHaveURL(new RegExp(`${studentId}$`));
   await expect(page.locator(".ip-tabs button")).toHaveCount(5);
-  await page
-    .locator(".ip-tabs")
-    .getByRole("button", { name: "Ngân hàng mục tiêu", exact: true })
-    .click();
-  await page.screenshot({
-    path: "test-results/plan-02-student.png",
-    fullPage: true,
-  });
-  await page
-    .getByRole("button", { name: "Gợi ý mục tiêu", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Tạo kế hoạch học tập", exact: true }).click();
   await expect(page).toHaveURL(/\/new\/program$/);
   await expect(
     page.getByRole("button", { name: "Tiếp tục: Lĩnh vực can thiệp" }),
@@ -60,7 +50,7 @@ test("five pages select multiple goals across fields and ages, then save one pla
     .selectOption("LD0003");
   await page.getByRole("checkbox", { name: /D\.4/ }).check();
   await expect(
-    page.getByText("2 mục tiêu đã chọn", { exact: true }),
+    page.getByText("4 mục tiêu đã chọn", { exact: true }),
   ).toBeVisible();
   expect(state.completeCalls).toBe(0);
   expect(state.childRequests).toBe(0);
@@ -77,7 +67,7 @@ test("five pages select multiple goals across fields and ages, then save one pla
   await page.getByRole("button", { name: "Kiểm tra và hoàn tất" }).click();
   await expect(page).toHaveURL(/\/new\/review$/);
   await expect(page.locator(".ip-outline-domain")).toHaveCount(2);
-  await expect(page.locator(".ip-outline-target")).toHaveCount(2);
+  await expect(page.locator(".ip-outline-target")).toHaveCount(4);
   expect(state.plans).toHaveLength(0);
   await page.getByRole("button", { name: "Quay lại lựa chọn" }).click();
   await expect(
@@ -87,8 +77,8 @@ test("five pages select multiple goals across fields and ages, then save one pla
   await page
     .getByRole("combobox", { name: "Độ tuổi Ngôn ngữ", exact: true })
     .selectOption("LD0001");
-  await expect(page.getByRole("checkbox", { name: /D\.1/ })).not.toBeChecked();
-  await expect(page.getByRole("checkbox", { name: /D\.2/ })).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /D\.1/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /D\.2/ })).toBeChecked();
   await page.getByRole("checkbox", { name: /D\.1/ }).check();
   await page.getByRole("checkbox", { name: /D\.2/ }).check();
   await page.getByRole("button", { name: "Kiểm tra và hoàn tất" }).click();
@@ -102,15 +92,15 @@ test("five pages select multiple goals across fields and ages, then save one pla
   await page.getByRole("button", { name: "Hoàn thành", exact: true }).click();
   await expect(page).toHaveURL(/\?tab=current$/);
   await expect(
-    page.getByText(/Đã lưu Kế hoạch Denver với 3 mục tiêu/),
+    page.getByText(/Đã lưu Kế hoạch học tập với 4 mục tiêu/),
   ).toBeVisible();
   expect(state.plans).toHaveLength(1);
-  expect(state.plans[0].goals).toHaveLength(3);
+  expect(state.plans[0].goals).toHaveLength(4);
   expect(state.completeCalls).toBe(1);
   await page.reload();
-  await expect(page.locator(".ip-outline-target")).toHaveCount(3);
+  await expect(page.locator(".ip-outline-target")).toHaveCount(4);
   await page.getByRole("button", { name: "Danh sách học sinh" }).click();
-  await expect(page.locator("tbody tr").first()).toContainText("3 mục tiêu");
+  await expect(page.locator("tbody tr").first()).toContainText("4 mục tiêu");
   await page
     .getByRole("textbox", { name: "Tìm học sinh", exact: true })
     .fill("Bình");

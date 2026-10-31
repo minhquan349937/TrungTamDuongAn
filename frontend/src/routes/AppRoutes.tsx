@@ -3,6 +3,8 @@ import { Result, Button, Spin } from "antd";
 import { AppLayout } from "../layouts/AppLayout";
 import { Dashboard, Charts } from "../pages/Dashboard";
 import { StudentsTable, StaffTable } from "../features/PeopleTables";
+import { DashboardStaffTable } from "../features/DashboardPeopleTables";
+import { StudentProfiles } from "../pages/StudentProfiles";
 import { Classes } from "../pages/Classes";
 import { Schedule } from "../pages/Schedule";
 import { Fees } from "../pages/Fees";
@@ -17,6 +19,8 @@ import {
 import { useDemo } from "../hooks/useDemo";
 import { canVisit } from "../services/authorization";
 import { RealInterventionPlans } from "../pages/RealInterventionPlans";
+import { IndividualAssignments } from "../pages/IndividualAssignments";
+import { ParentPlanReports } from "../pages/PlanMonthlyEvaluations";
 import { GoalCatalogManager } from "../pages/GoalCatalogManager";
 import { LoginPage } from "../pages/LoginPage";
 import { useAuth } from "../auth/AuthProvider";
@@ -33,6 +37,8 @@ function Content() {
       />
     );
   if (pathname === "/dashboard") return <Dashboard />;
+  if (pathname === "/reports") return <ParentPlanReports />;
+  if (pathname === "/transfers") return <Navigate to="/students" replace />;
   if (pathname === "/library") return <GoalCatalogManager />;
   if (
     pathname === "/individual/plan" ||
@@ -40,7 +46,7 @@ function Content() {
   )
     return <RealInterventionPlans />;
   if (pathname === "/students")
-    return (
+    return role === "ADMIN" ? <StudentProfiles /> : (
       <>
         <div className="page-heading">
           <div>
@@ -62,9 +68,11 @@ function Content() {
             <p>Những người đồng hành tận tâm trên hành trình của con.</p>
           </div>
         </div>
-        <StaffTable />
+        {role === "ADMIN" ? <DashboardStaffTable compact={false} /> : <StaffTable />}
       </>
     );
+  if (pathname === "/individual/assign")
+    return role === "ADMIN" ? <IndividualAssignments /> : <Result status="403" title="Bạn không có quyền phân công giáo viên" />;
   if (/^\/(individual|groups|daycare)(\/(assign|students))?$/.test(pathname))
     return <Classes />;
   if (pathname.startsWith("/schedule") || pathname.startsWith("/attendance"))

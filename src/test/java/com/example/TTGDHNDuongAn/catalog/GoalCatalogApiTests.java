@@ -74,7 +74,7 @@ class GoalCatalogApiTests {
 
     @AfterAll
     void removeFixtures() {
-        jdbc.update("DELETE FROM progress_records WHERE plan_goal_id IN (SELECT id FROM plan_goals WHERE plan_id=?)", PLAN);
+        jdbc.update("DELETE FROM goal_evaluations WHERE plan_goal_id IN (SELECT id FROM plan_goals WHERE plan_id=?)", PLAN);
         jdbc.update("DELETE FROM plan_goals WHERE plan_id=?", PLAN);
         jdbc.update("DELETE FROM learning_plans WHERE id=?", PLAN);
         jdbc.update("DELETE FROM specific_goals WHERE goal_id IN (?,?)", VB_GOAL, VB_NO_CHILD);
@@ -185,11 +185,11 @@ class GoalCatalogApiTests {
                     () -> jdbc.update("INSERT INTO plan_goals(id,plan_id,goal_id,goal_snapshot,criteria_snapshot,assigned_by) " +
                                     "VALUES(?,?,?,JSON_OBJECT(),JSON_OBJECT(),?)",
                             "00000000-0000-0000-0000-000000000117", PLAN, DENVER_GOAL, ACTOR));
-            jdbc.update("INSERT INTO progress_records(id,plan_goal_id,observed_at,recorded_by) " +
-                            "VALUES(?,?,UTC_TIMESTAMP(6),?)",
+            jdbc.update("INSERT INTO goal_evaluations(id,plan_goal_id,attempt_no,evaluated_at,evaluated_by) " +
+                            "VALUES(?,?,1,UTC_TIMESTAMP(6),?)",
                     "00000000-0000-0000-0000-000000000118", specific, ACTOR);
         } finally {
-            jdbc.update("DELETE FROM progress_records WHERE plan_goal_id=?", specific);
+            jdbc.update("DELETE FROM goal_evaluations WHERE plan_goal_id=?", specific);
             jdbc.update("DELETE FROM plan_goals WHERE id IN (?,?)", direct, specific);
         }
     }

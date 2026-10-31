@@ -2,6 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { interventionApi, type PlanReview } from "./interventionApi";
 afterEach(() => vi.unstubAllGlobals());
 describe("intervention workflow API", () => {
+  it("loads goal choices and learning history for the selected student", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ supportsSpecificGoals: false, goals: [], history: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await interventionApi.studentTargets("student-one", "LD0001");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/intervention/students/student-one/level-domains/LD0001/targets");
+    expect(fetchMock.mock.calls[0][1].credentials).toBe("include");
+  });
   it("finishes the reviewed plan in one request without sending client goal text", async () => {
     const review: PlanReview = {
       requestId: "request",

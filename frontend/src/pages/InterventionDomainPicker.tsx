@@ -11,7 +11,8 @@ import {
   interventionApi,
   type AgeOption,
   type DomainGroup,
-  type DomainTargets,
+  type StudentDomainTargets,
+  type GoalLearningHistory,
   type GoalChoice,
   type ProgramSummary,
 } from "../services/interventionApi";
@@ -19,6 +20,14 @@ export const selectionKey = (row: {
   goalId: string;
   specificGoalId: string | null;
 }) => (row.specificGoalId ? `S:${row.specificGoalId}` : `G:${row.goalId}`);
+
+function LearningNote({ history }: { history?: GoalLearningHistory }) {
+  return <small className={`ip-learning-note ${history?.resultStatus === "NOT_ACHIEVED" ? "learned" : history ? "not-started" : "new"}`}>
+    {!history ? "Mục tiêu mới" : history.resultStatus === "NOT_ACHIEVED"
+      ? `Đã học · Tỷ lệ hoàn thành ${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(history.achievementPercent ?? 0)}%`
+      : "Chưa thực hiện"}
+  </small>;
+}
 
 function GoalRow({
   goal,
@@ -28,6 +37,7 @@ function GoalRow({
   selected,
   toggle,
   supportsSpecificGoals,
+  history,
 }: {
   goal: GoalChoice;
   age: AgeOption;
@@ -36,6 +46,7 @@ function GoalRow({
   selected: GoalSelection[];
   toggle: (row: GoalSelection) => void;
   supportsSpecificGoals: boolean;
+  history: GoalLearningHistory[];
 }) {
   const [detail, setDetail] = useState<GoalDetail | null>(null);
   const [open, setOpen] = useState(false);
@@ -89,6 +100,7 @@ function GoalRow({
   }
   const checked = (row: GoalSelection) =>
     selected.some((item) => selectionKey(item) === selectionKey(row));
+  const past = (specificGoalId: string | null) => history.find(h => h.goalId === goal.id && h.specificGoalId === specificGoalId);
   return (
     <article className="ip-goal-row">
       <div className="ip-goal-main">
@@ -101,10 +113,11 @@ function GoalRow({
           </Checkbox>
         ) : (
           <b>
-            {goal.code} · {goal.name}
+            Mục tiêu cụ thể của {goal.code} · {goal.name}
           </b>
         )}
-        {goal.description && <p>{goal.description}</p>}
+        {goal.canSelectGeneralGoal && <LearningNote history={past(null)} />}
+        {goal.canSelectGeneralGoal && goal.description && <p>{goal.description}</p>}
         {supportsSpecificGoals && goal.hasSpecificGoals && (
           <Button
             type="text"
@@ -122,7 +135,7 @@ function GoalRow({
         <div className="ip-children">
           {loading && <Spin />}
           {error && <Alert type="error" message={error} />}
-          {detail?.specificGoals.map((child) => (
+          {detail?.specificGoals.filter(child => past(child.id)?.resultStatus !== "ACHIEVED").map((child) => (
             <div key={child.id}>
               <Checkbox
                 checked={checked(choice(child))}
@@ -130,6 +143,7 @@ function GoalRow({
               >
                 <b>{child.code}</b> · {child.description}
               </Checkbox>
+              <LearningNote history={past(child.id)} />
               <small className="ip-age">
                 {child.ageMinMonths}–{child.ageMaxMonths} tháng
               </small>
@@ -141,25 +155,27 @@ function GoalRow({
   );
 }
 function AgeGoals({
+  studentId,
   age,
   group,
   program,
   selected,
   toggle,
 }: {
+  studentId: string;
   age: AgeOption;
   group: DomainGroup;
   program: ProgramSummary;
   selected: GoalSelection[];
   toggle: (row: GoalSelection) => void;
 }) {
-  const [data, setData] = useState<DomainTargets | null>(null);
+  const [data, setData] = useState<StudentDomainTargets | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
     setData(null); setError("");
     void interventionApi
-      .targets(age.levelDomainId)
+      .studentTargets(studentId, age.levelDomainId)
       .then((row) => {
         if (active) setData(row);
       })
@@ -169,7 +185,7 @@ function AgeGoals({
     return () => {
       active = false;
     };
-  }, [age.levelDomainId]);
+  }, [studentId, age.levelDomainId]);
   if (error) return <Alert type="error" message={error} />;
   if (!data)
     return (
@@ -178,7 +194,7 @@ function AgeGoals({
       </div>
     );
   if (!data.goals.length)
-    return <Empty description="Chưa có mục tiêu trong độ tuổi này" />;
+    return <Empty description="Không còn mục tiêu phù hợp trong độ tuổi này" />;
   return (
     <div className="ip-domain-goals">
       {data.goals.map((goal) => (
@@ -191,12 +207,14 @@ function AgeGoals({
           selected={selected}
           toggle={toggle}
           supportsSpecificGoals={data.supportsSpecificGoals}
+          history={data.history}
         />
       ))}
     </div>
   );
 }
 export function InterventionDomainPicker({
+  studentId,
   group,
   index,
   program,
@@ -205,6 +223,7 @@ export function InterventionDomainPicker({
   domainId,
   onAgeChange,
 }: {
+  studentId: string;
   group: DomainGroup;
   index: number;
   program: ProgramSummary;
@@ -243,6 +262,7 @@ export function InterventionDomainPicker({
       </div>
       {age ? (
         <AgeGoals
+          studentId={studentId}
           key={age.levelDomainId}
           age={age}
           group={group}

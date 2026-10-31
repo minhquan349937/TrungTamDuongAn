@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class StudentPlanRepository {
+    public static final String PLAN_SELECT="SELECT lp.*,EXISTS(SELECT 1 FROM plan_evaluations pe WHERE pe.learning_plan_id=lp.id) has_evaluation," +
+        "EXISTS(SELECT 1 FROM plan_evaluations pe WHERE pe.learning_plan_id=lp.id AND pe.sent_to_parent=1) sent_to_parent FROM learning_plans lp ";
     private final JdbcTemplate jdbc;
 
     public StudentPlanRepository(JdbcTemplate jdbc) {
@@ -38,10 +40,8 @@ public class StudentPlanRepository {
     }
 
     public List<StudentPlanDtos.Plan> plans(String studentId) {
-        return jdbc.query("SELECT id,student_id,name,start_date,status FROM learning_plans " +
-                        "WHERE student_id=? ORDER BY start_date DESC,id",
-                (rs, n) -> new StudentPlanDtos.Plan(rs.getString("id"), rs.getString("student_id"),
-                        rs.getString("name"), rs.getDate("start_date").toLocalDate(), rs.getString("status")),
+        return jdbc.query(PLAN_SELECT+"WHERE lp.student_id=? ORDER BY lp.start_date DESC,lp.id",
+                (rs, n) -> plan(rs),
                 studentId);
     }
 
@@ -49,7 +49,13 @@ public class StudentPlanRepository {
         String id = UUID.randomUUID().toString();
         jdbc.update("INSERT INTO learning_plans(id,student_id,name,start_date,created_by) VALUES(?,?,?,?,?)",
                 id, studentId, request.name().trim(), Date.valueOf(request.startDate()), actorId);
-        return new StudentPlanDtos.Plan(id, studentId, request.name().trim(), request.startDate(), "DRAFT");
+        return plans(studentId).stream().filter(p->p.id().equals(id)).findFirst().orElseThrow();
+    }
+    public static StudentPlanDtos.Plan plan(java.sql.ResultSet rs)throws java.sql.SQLException {
+        return new StudentPlanDtos.Plan(rs.getString("id"),rs.getString("student_id"),rs.getString("name"),
+            rs.getDate("start_date").toLocalDate(),rs.getString("status"),
+            rs.getDate("end_date")==null?null:rs.getDate("end_date").toLocalDate(),
+            rs.getTimestamp("created_at").toLocalDateTime(),rs.getBoolean("has_evaluation"),rs.getBoolean("sent_to_parent"));
     }
 
     private StudentPlanDtos.Student student(java.sql.ResultSet rs) throws java.sql.SQLException {

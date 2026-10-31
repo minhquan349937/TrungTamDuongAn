@@ -90,7 +90,6 @@ export function AppLayout() {
         >
           <PanelLeftClose size={16} />
         </button>
-        <p className="nav-caption">KHÔNG GIAN LÀM VIỆC</p>
         <nav>
           {menu.map((g) => {
             const Icon = icons[g.icon as keyof typeof icons],
@@ -261,16 +260,12 @@ export function AppLayout() {
                   .filter((s) => db.parents[0].studentIds.includes(s.id))
                   .map((s) => ({ value: s.id, label: s.name }))}
               />
-              <span className="badge blue">Hồ sơ minh họa</span>
             </div>
           )}
           <Outlet />
         </main>
         <footer className="page-footer">
           <span>Dương An · Cùng con lớn lên mỗi ngày</span>
-          <span>
-            <i /> {location.pathname.startsWith("/individual/plan") ? "Kế hoạch can thiệp" : "Bản demo · Dữ liệu giả lập"}
-          </span>
         </footer>
       </div>
     </div>

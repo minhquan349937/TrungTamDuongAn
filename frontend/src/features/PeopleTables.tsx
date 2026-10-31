@@ -69,7 +69,7 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
                   <button className="name-link" onClick={() => setDetail(s.id)}>
                     {s.name}
                   </button>
-                  <small>{s.id}</small>
+                  <small>Mã: {s.id}</small>
                 </div>
               </div>
             ),
@@ -171,25 +171,18 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
                   ? [
                       {
                         key: "goals",
-                        label: "Ngân hàng mục tiêu",
+                        label: "Kế hoạch học tập",
                         children: (
                           <div className="detail-list">
-                            <p>
-                              {
-                                view.studentGoals.filter(
-                                  (g) => g.studentId === student.id,
-                                ).length
-                              }{" "}
-                              mục tiêu trong ngân hàng của {student.name}.
-                            </p>
+                            <p>Xem kế hoạch học tập và lịch sử đánh giá của {student.name}.</p>
                             <Button
                               type="primary"
                               onClick={() => {
                                 setDetail(undefined);
-                                nav(`/individual/plan/${student.id}?tab=bank`);
+                                nav(`/individual/plan/${student.id}?tab=current`);
                               }}
                             >
-                              Mở ngân hàng mục tiêu
+                              Mở kế hoạch học tập
                             </Button>
                           </div>
                         ),

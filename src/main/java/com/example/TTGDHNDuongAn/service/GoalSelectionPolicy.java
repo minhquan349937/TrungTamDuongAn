@@ -14,6 +14,6 @@ public class GoalSelectionPolicy {
     }
 
     public boolean canSelectGeneralGoal(String programCode, boolean hasSpecificGoals) {
-        return !"VB".equalsIgnoreCase(programCode) || !hasSpecificGoals;
+        return true;
     }
 }

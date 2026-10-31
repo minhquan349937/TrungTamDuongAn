@@ -57,12 +57,21 @@ export function RecordEditor({
   }, [record, form, kind, db, role, initialType]);
   const req = [{ required: true, message: "Vui lòng nhập thông tin này." }];
   function save(values: Record<string, unknown>) {
+    const staffCodeKey = "duongan.staff-code-seq.v1";
+    const nextStaffCode = () => {
+      const maxExisting = db.staff.reduce((max, staff) => {
+        const match = /^NV(\d+)$/.exec(staff.id);
+        return match ? Math.max(max, Number(match[1])) : max;
+      }, 0);
+      const reserved = Number(localStorage.getItem(staffCodeKey)) || 1;
+      const next = Math.max(reserved, maxExisting + 1);
+      localStorage.setItem(staffCodeKey, String(next + 1));
+      return `NV${String(next).padStart(3, "0")}`;
+    };
     const entity = {
       ...record,
       ...values,
-      id:
-        record?.id ??
-        mockService.newId(
+      id: record?.id ?? (kind === "staff" ? nextStaffCode() : mockService.newId(
           {
             students: "HS",
             staff: "NV",
@@ -71,7 +80,7 @@ export function RecordEditor({
             fees: "HP",
             leaves: "NP",
           }[kind],
-        ),
+        )),
     };
     if (kind === "sessions") {
       const session = entity as unknown as Session;
@@ -107,7 +116,9 @@ export function RecordEditor({
       destroyOnClose
     >
       <p className="form-intro">
-        Thông tin chỉ được lưu trên trình duyệt cho mục đích minh họa.
+        {kind === "staff" && !record
+          ? "Mã nhân viên sẽ được tự sinh theo thứ tự khi lưu. Thông tin được lưu trên trình duyệt cho mục đích minh họa."
+          : "Thông tin chỉ được lưu trên trình duyệt cho mục đích minh họa."}
       </p>
       <Form form={form} layout="vertical" onFinish={save}>
         {(kind === "students" || kind === "staff" || kind === "classes") && (

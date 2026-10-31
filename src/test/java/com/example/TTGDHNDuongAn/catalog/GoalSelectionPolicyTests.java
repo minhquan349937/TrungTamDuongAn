@@ -5,7 +5,7 @@ import static org.mockito.Mockito.*;
 import java.util.List;
 import java.util.Optional;
 import com.example.TTGDHNDuongAn.dto.GoalCatalogDtos.*;
-import com.example.TTGDHNDuongAn.dto.GoalBankDtos.Target;
+import com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.Target;
 import com.example.TTGDHNDuongAn.repository.GoalCatalogRepository;
 import com.example.TTGDHNDuongAn.service.*;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ class GoalSelectionPolicyTests {
     }
 
     @Test
-    void vbLoadsChildrenOncePerParentWithinAReviewAndRequiresAChildWhenPresent() {
+    void vbLoadsChildrenOnceAndAllowsMainAndChildTargets() {
         when(repository.goalHeader("GL000001")).thenReturn(Optional.of(new GoalHeader("GL000001","VB.1.1","Parent",null,"VB",location)));
         when(repository.specificGoals("GL000001")).thenReturn(List.of(
                 new SpecificGoal("SG000001","VB.1.1A","Child A",12,24,true,1),
@@ -38,7 +38,7 @@ class GoalSelectionPolicyTests {
         assertEquals(2,selected.size());
         verify(repository,times(1)).children(List.of("GL000001"));
         verify(repository,times(1)).headers(List.of("GL000001"));
-        assertThrows(org.springframework.web.server.ResponseStatusException.class,() -> resolver.resolve("GL000001",null));
+        assertNull(resolver.resolve("GL000001",null).specificGoalId());
     }
 
     @Test

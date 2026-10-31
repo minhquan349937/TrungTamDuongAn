@@ -1,6 +1,6 @@
 import { useConfirm } from "../hooks/useConfirm";
-import { useState } from "react";
-import { Button, Modal } from "antd";
+import { useEffect, useState } from "react";
+import { App, Button, Form, Input, Modal } from "antd";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Bell,
   ShieldCheck,
+  Pencil,
 } from "lucide-react";
 import { useDemo } from "../hooks/useDemo";
 import { DataTable, Badge, SectionTitle, Avatar } from "../components/ui";
@@ -17,6 +18,7 @@ import { RecordEditor } from "../features/RecordEditor";
 import { mockService } from "../services/mockService";
 import { today, dateLabel } from "../utils/format";
 import { titles } from "../routes/menu";
+import { studentProfileApi, type GuardianProfile, type GuardianUpdateInput, type StudentProfile } from "../services/studentProfileApi";
 export function LeavePage() {
   const modal = useConfirm();
   const { db, view, role, run } = useDemo(),
@@ -167,45 +169,102 @@ export function Notifications() {
   );
 }
 export function Parents() {
-  const { view } = useDemo();
+  const { message } = App.useApp();
+  const [form] = Form.useForm<GuardianUpdateInput>();
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [error, setError] = useState("");
+  const [editing, setEditing] = useState<GuardianProfile | null>(null);
+  const [saving, setSaving] = useState(false);
+  async function reload() {
+    try {
+      setStudents(await studentProfileApi.list());
+      setError("");
+    } catch (err) { setError((err as Error).message); }
+  }
+  useEffect(() => {
+    let active = true;
+    studentProfileApi.list().then((rows) => { if (active) setStudents(rows); })
+      .catch((err: Error) => { if (active) setError(err.message); });
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (!editing) return;
+    form.setFieldsValue({ fullName: editing.fullName, phone: editing.phone,
+      email: editing.email, address: editing.address });
+  }, [editing, form]);
+  async function saveGuardian(values: GuardianUpdateInput) {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await studentProfileApi.updateGuardian(editing.id, {
+        fullName: values.fullName.trim(), phone: values.phone.trim(),
+        email: values.email?.trim() || null, address: values.address?.trim() || null,
+      });
+      await reload();
+      setEditing(null);
+      message.success("Đã cập nhật hồ sơ phụ huynh");
+    } catch (err) { message.error((err as Error).message); }
+    finally { setSaving(false); }
+  }
+  const parents = [...new Map(students.filter((s) => s.guardian).map((s) => [s.guardian!.id, s.guardian!])).values()];
   return (
     <>
       <div className="page-heading">
         <div>
           <div className="eyebrow">QUẢN LÝ HỒ SƠ</div>
           <h1>Hồ sơ phụ huynh</h1>
-          <p>30 tài khoản minh họa, không sử dụng thông tin liên hệ thật.</p>
+          <p>Phụ huynh chính đã được nhập cùng hồ sơ học sinh.</p>
         </div>
       </div>
+      {error && <div className="info-note">{error}</div>}
       <DataTable
         title="Danh sách phụ huynh"
-        rows={view.parents}
-        searchText={(p) => p.name + " " + p.id}
+        rows={parents}
+        searchText={(p) => p.fullName + " " + p.id}
         columns={[
           {
             label: "Phụ huynh",
             render: (p, i) => (
               <div className="person-cell">
-                <Avatar name={p.name} index={i} />
+                <Avatar name={p.fullName} index={i} />
                 <div>
-                  <b>{p.name}</b>
-                  <small>{p.id}</small>
+                  <b>{p.fullName}</b>
+                  <small>{p.code}</small>
                 </div>
               </div>
             ),
           },
-          { label: "Email minh họa", render: (p) => p.email },
-          { label: "Điện thoại giả lập", render: (p) => p.phone },
+          { label: "Email", render: (p) => p.email || "—" },
+          { label: "Điện thoại", render: (p) => p.phone },
           {
             label: "Hồ sơ con liên kết",
             render: (p) =>
-              view.students
-                .filter((s) => p.studentIds.includes(s.id))
-                .map((s) => s.name)
+              students
+                .filter((s) => s.guardian?.id === p.id)
+                .map((s) => s.fullName)
                 .join(", "),
+          },
+          {
+            label: "Thao tác",
+            render: (p) => <Button icon={<Pencil size={15} />} onClick={() => setEditing(p)}>Sửa</Button>,
           },
         ]}
       />
+      <Modal open={!!editing} title="Sửa hồ sơ phụ huynh" onCancel={() => setEditing(null)}
+        onOk={() => form.submit()} okText="Lưu thay đổi" confirmLoading={saving} destroyOnClose>
+        <Form form={form} layout="vertical" onFinish={saveGuardian}>
+          <Form.Item name="fullName" label="Họ và tên" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập họ tên." }]}>
+            <Input maxLength={150} />
+          </Form.Item>
+          <Form.Item name="phone" label="Số điện thoại" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập số điện thoại." }]}>
+            <Input maxLength={30} type="tel" />
+          </Form.Item>
+          <Form.Item name="email" label="Email" rules={[{ type: "email", message: "Email không hợp lệ." }]}>
+            <Input maxLength={254} />
+          </Form.Item>
+          <Form.Item name="address" label="Địa chỉ"><Input.TextArea rows={2} /></Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 }

@@ -1,5 +1,7 @@
 # Trung tâm Dương An
 
+Nhận xét kế hoạch hằng tháng đã có trên MySQL V12: giáo viên/ADMIN viết bản nháp và công bố trong chi tiết kế hoạch, phụ huynh đọc tại `/#/reports`. Xem [mô tả V12](database/mysql/PLAN_EVALUATIONS_V12.md).
+
 Dự án quản lý trung tâm can thiệp sớm, gồm frontend tiếng Việt, database MySQL theo bản chỉnh sửa 1.1 và backend Spring Boot.
 
 ## Thành phần
@@ -7,10 +9,10 @@ Dự án quản lý trung tâm can thiệp sớm, gồm frontend tiếng Việt,
 | Thư mục | Nội dung |
 | --- | --- |
 | `frontend/` | React, TypeScript, Vite, Tailwind CSS, Ant Design, Recharts; ba vai trò ADMIN, TEACHER, PARENT |
-| `database/` | MySQL, migrations V1–V7, snapshot mục tiêu và kiểm thử; MySQL Docker ở cổng 3308; giữ bản PostgreSQL 1.0 để tham khảo |
+| `database/` | MySQL, migrations V1–V10, snapshot mục tiêu và kiểm thử; MySQL Docker ở cổng 3308; giữ bản PostgreSQL 1.0 để tham khảo |
 | `src/` | Spring Boot, Java 21; đăng nhập, phân quyền và API ngân hàng mục tiêu |
 
-Đăng nhập lấy tài khoản và vai trò từ MySQL qua Spring Boot. Màn kế hoạch can thiệp gọi API thật; các màn nghiệp vụ còn lại đang dùng LocalStorage rỗng ban đầu.
+Đăng nhập lấy tài khoản và vai trò từ MySQL qua Spring Boot. Màn hồ sơ học sinh, danh sách phụ huynh chính và kế hoạch can thiệp gọi API thật; các màn nghiệp vụ còn lại đang dùng LocalStorage rỗng ban đầu.
 
 ## Chạy backend và đăng nhập
 
@@ -31,7 +33,7 @@ npm run dev
 
 Database hiện không có tài khoản demo. Để tạo quản trị viên đầu tiên, thêm `SETUP_ADMIN_EMAIL` và `SETUP_ADMIN_PASSWORD` do bạn tự chọn vào `.env`, khởi động backend một lần, sau đó xóa hai dòng này khỏi `.env`. Mật khẩu được băm bằng BCrypt và tài khoản được tạo nếu email chưa tồn tại. Không bật lại bootstrap tài khoản mẫu.
 
-Backend dùng session cookie và CSRF. Catalog theo [thiết kế V6](database/mysql/GOAL_BANK_V6.md) dùng ID ngắn; [V7 ngân hàng theo học sinh](database/mysql/GOAL_BANK_FLOW.md) bổ sung chọn nhiều mục tiêu, xem lại và hoàn tất. Denver chọn chính, VB chọn con hoặc chính khi không có con. Ngày 27/10/2026 đã nâng cấp `duong_an_v11` lên V7 trên MySQL local 3306 và Docker 3308, có full backup và kiểm tra dữ liệu sau nâng cấp. Backend mặc định dùng Docker 3308; hai database độc lập. Các màn nghiệp vụ khác ngoài kế hoạch can thiệp vẫn còn dùng LocalStorage cho tới khi có API tương ứng.
+Backend dùng session cookie và CSRF. Catalog theo [thiết kế V6](database/mysql/GOAL_BANK_V6.md) dùng ID ngắn; [V7 ngân hàng theo học sinh](database/mysql/GOAL_BANK_FLOW.md) bổ sung chọn nhiều mục tiêu, xem lại và hoàn tất. Denver chọn chính, VB chọn con hoặc chính khi không có con. Ngày 27/10/2026 đã nâng cấp `duong_an_v11` lên V7 trên MySQL local 3306 và Docker 3308, có full backup và kiểm tra dữ liệu sau nâng cấp. Backend mặc định dùng Docker 3308; hai database độc lập. Các màn nghiệp vụ khác ngoài hồ sơ học sinh, danh sách phụ huynh chính và kế hoạch can thiệp vẫn còn dùng LocalStorage cho tới khi có API tương ứng.
 ## Chạy MySQL bằng Docker
 
 Docker Desktop cần mở. Từ PowerShell tại thư mục dự án:
@@ -74,3 +76,5 @@ Playwright hiện cấu hình Chrome trên Windows; xem hướng dẫn frontend 
 - [Kết quả kiểm thử MySQL](database/mysql/TESTING.md)
 
 Kế hoạch can thiệp dùng API Spring Boot/MySQL với [luồng 5 trang](database/mysql/INTERVENTION_WORKFLOW.md). Hoàn thành lưu `learning_plans` và `plan_goals` cùng transaction; ngân hàng riêng V7 vẫn giữ dữ liệu đã có. Dữ liệu Denver/VB do người dùng nhập được đọc trực tiếp từ Docker.
+
+Luồng kế hoạch và đánh giá theo phần trăm (V11): [Tài liệu và kết quả chuyển đổi](database/mysql/PLAN_EVALUATIONS_V11.md).

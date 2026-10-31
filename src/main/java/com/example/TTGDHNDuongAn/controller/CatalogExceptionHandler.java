@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-@RestControllerAdvice(assignableTypes = {GoalCatalogController.class, PlanGoalController.class, StudentGoalBankController.class, InterventionController.class, PlanProgressController.class})
+@RestControllerAdvice(assignableTypes = {GoalCatalogController.class, PlanGoalController.class, InterventionController.class, PlanProgressController.class, GoalEvaluationController.class, IndividualAssignmentController.class, PlanEvaluationController.class})
 public class CatalogExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String,Object>> businessError(ResponseStatusException exception) {

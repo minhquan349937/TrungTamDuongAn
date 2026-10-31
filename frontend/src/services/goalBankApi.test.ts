@@ -33,23 +33,4 @@ describe("goal bank API contract", () => {
     });
   });
 
-  it("completes with only reviewed IDs and the review token", async () => {
-    const review = { programId: "PR0001", items: [{ goalId: "GL000001", specificGoalId: null,
-      targetType: "GOAL" as const, code: "D.1", name: "Server text", description: "Full text",
-      location: { programId: "PR0001", programName: "Test", levelId: "LV0001", levelName: "Test", domainId: "DM0001", domainName: "Test", ageMinMonths: 12, ageMaxMonths: 24 },
-      ageMinMonths: 12, ageMaxMonths: 24 }], total: 1, reviewToken: "a".repeat(64) };
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "csrf" }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => review })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ token: "csrf" }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ addedCount: 1, bank: [] }) });
-    vi.stubGlobal("fetch", fetchMock);
-    const preview = await goalBankApi.previewBank("student", "PR0001", [{ goalId: "GL000001", specificGoalId: null }]);
-    await goalBankApi.completeBank("student", preview);
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/students/student/goal-bank/preview");
-    expect(fetchMock.mock.calls[3][0]).toBe("/api/students/student/goal-bank/complete");
-    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({
-      programId: "PR0001", reviewToken: "a".repeat(64), selections: [{ goalId: "GL000001", specificGoalId: null }],
-    });
-  });
 });

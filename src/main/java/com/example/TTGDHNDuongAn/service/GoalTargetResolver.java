@@ -1,7 +1,7 @@
 package com.example.TTGDHNDuongAn.service;
 
-import com.example.TTGDHNDuongAn.dto.GoalBankDtos.Selection;
-import com.example.TTGDHNDuongAn.dto.GoalBankDtos.Target;
+import com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.Selection;
+import com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.Target;
 import com.example.TTGDHNDuongAn.dto.GoalCatalogDtos.GoalDetail;
 import java.util.List;
 import java.util.HashMap;

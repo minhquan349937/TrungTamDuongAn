@@ -14,19 +14,20 @@ export function Avatar({ name, index = 0 }: { name: string; index?: number }) {
     <span className={"avatar avatar-" + (index % 4)}>{initials(name)}</span>
   );
 }
-export function Badge({ children }: { children: ReactNode }) {
+export function Badge({ children, tone }: { children: ReactNode; tone?: "green" | "red" }) {
   const text = String(children);
   return (
     <span
       className={
         "badge " +
-        (/Đang|Có mặt|Đã duyệt|Đã thanh toán|Đã chấm/.test(text)
-          ? "green"
-          : /Tạm|Chờ|Chưa|Nghỉ|Có phép/.test(text)
-            ? "amber"
-            : /Ngừng|Vắng|Từ chối/.test(text)
-              ? "red"
-              : "blue")
+        (tone ??
+          (/Đang|Có mặt|Đã duyệt|Đã thanh toán|Đã chấm/.test(text)
+            ? "green"
+            : /Tạm|Chờ|Chưa|Nghỉ|Có phép/.test(text)
+              ? "amber"
+              : /Ngừng|Vắng|Từ chối/.test(text)
+                ? "red"
+                : "blue"))
       }
     >
       {children}

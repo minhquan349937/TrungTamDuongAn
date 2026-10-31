@@ -104,7 +104,7 @@ CREATE TABLE student_guardian (
     KEY ix_guardian_portal (guardian_id, revoked_at, can_view_portal),
     FOREIGN KEY (student_id) REFERENCES student(id),
     FOREIGN KEY (guardian_id) REFERENCES guardian(id),
-    CONSTRAINT ck_guardian_relationship CHECK (relationship IN ('MOTHER','FATHER','GUARDIAN','OTHER')),
+    CONSTRAINT ck_guardian_relationship CHECK (relationship IN ('MOTHER','FATHER','GRANDFATHER','GRANDMOTHER','GUARDIAN','OTHER')),
     CONSTRAINT ck_guardian_flags CHECK (is_primary IN (0,1) AND can_view_portal IN (0,1) AND can_pick_up IN (0,1)),
     CONSTRAINT ck_guardian_revoked CHECK (revoked_at IS NULL OR revoked_at >= linked_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

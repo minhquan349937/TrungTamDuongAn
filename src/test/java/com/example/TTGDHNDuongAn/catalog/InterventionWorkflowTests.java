@@ -6,7 +6,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import com.example.TTGDHNDuongAn.dto.GoalBankDtos.Target;
+import com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.Target;
 import com.example.TTGDHNDuongAn.dto.InterventionDtos.*;
 import com.example.TTGDHNDuongAn.repository.PlanGoalRepository;
 import com.example.TTGDHNDuongAn.security.AppUserPrincipal;
@@ -55,7 +55,7 @@ class InterventionWorkflowTests {
         jdbc.update("INSERT INTO specific_goals(id,goal_id,code,description,display_order) VALUES('SG000901','GL000904','FLOW.V1A','Child A',1),('SG000902','GL000904','FLOW.V1B','Child B',2)");
     }
     @BeforeEach void clearPlans() {
-        jdbc.update("DELETE FROM progress_records WHERE plan_goal_id IN(SELECT pg.id FROM plan_goals pg JOIN learning_plans lp ON lp.id=pg.plan_id WHERE lp.student_id IN (?,?))",STUDENT,OTHER);
+        jdbc.update("DELETE FROM goal_evaluations WHERE plan_goal_id IN(SELECT pg.id FROM plan_goals pg JOIN learning_plans lp ON lp.id=pg.plan_id WHERE lp.student_id IN (?,?))",STUDENT,OTHER);
         jdbc.update("DELETE FROM plan_goals WHERE plan_id IN(SELECT id FROM learning_plans WHERE student_id IN (?,?))",STUDENT,OTHER);
         jdbc.update("DELETE FROM learning_plans WHERE student_id IN (?,?)",STUDENT,OTHER);
     }
@@ -80,7 +80,7 @@ class InterventionWorkflowTests {
         assertEquals(2,summary.domainCount()); assertEquals(3,summary.goalCount()); assertEquals(12,summary.ageMinMonths()); assertEquals(36,summary.ageMaxMonths());
         var fields=service.domains("PR0901"); assertEquals(2,fields.size()); assertEquals(2,fields.getFirst().ages().size());
         var denver=service.targets("LD0901"); assertFalse(denver.supportsSpecificGoals()); assertTrue(denver.goals().getFirst().canSelectGeneralGoal());
-        var vb=service.targets("LD0904"); assertTrue(vb.supportsSpecificGoals()); assertFalse(vb.goals().getFirst().canSelectGeneralGoal()); assertTrue(vb.goals().get(1).canSelectGeneralGoal());
+        var vb=service.targets("LD0904"); assertTrue(vb.supportsSpecificGoals()); assertTrue(vb.goals().getFirst().canSelectGeneralGoal()); assertTrue(vb.goals().get(1).canSelectGeneralGoal());
         mvc.perform(get("/api/intervention/students").param("q","FLOW1").with(user(ADMIN))).andExpect(status().isOk()).andExpect(jsonPath("$[0].studyingGoals").value(0));
     }
     @Test void reviewsWithoutWritingThenSavesThePlanAndAllGoalsAndRetries() throws Exception {
@@ -105,7 +105,7 @@ class InterventionWorkflowTests {
         finally { jdbc.update("UPDATE goals SET description='First description' WHERE id='GL000901'"); }
         assertEquals(0,plans()); assertEquals(0,goals());
         var vb=new Draft(UUID.randomUUID().toString(),"PR0902","VB plan",draft.startDate(),List.of(new Target("GL000904",null)));
-        assertThrows(ResponseStatusException.class,()->service.preview(STUDENT,vb));
+        assertEquals(1,service.preview(STUDENT,vb).total());
         var valid=new Draft(vb.requestId(),vb.programId(),vb.name(),vb.startDate(),List.of(new Target("GL000904","SG000901"),new Target("GL000904","SG000902"),new Target("GL000905",null)));
         assertEquals(3,service.complete(STUDENT,complete(service.preview(STUDENT,valid)),ACTOR).result().goals().size());
     }
@@ -123,16 +123,15 @@ class InterventionWorkflowTests {
             assertNotEquals(a.get().alreadySaved(),b.get().alreadySaved());
         }
         assertEquals(1,plans()); assertEquals(2,goals());
-        jdbc.update("UPDATE plan_goals SET status='ACHIEVED' WHERE goal_id='GL000901' AND plan_id=?",checked.requestId());
+        jdbc.update("INSERT INTO goal_evaluations(id,plan_goal_id,attempt_no,achievement_percent,evaluated_at,evaluated_by) SELECT ?,id,1,80,UTC_TIMESTAMP(6),? FROM plan_goals WHERE goal_id='GL000901' AND plan_id=?",UUID.randomUUID().toString(),ACTOR,checked.requestId());
         assertEquals(1,service.workspace(STUDENT).student().studyingGoals()); assertEquals(1,service.workspace(STUDENT).student().achievedGoals());
-        jdbc.update("UPDATE plan_goals SET status='PAUSED' WHERE goal_id='GL000902' AND plan_id=?",checked.requestId());
-        assertEquals(0,service.workspace(STUDENT).student().studyingGoals());
+        assertEquals(1,service.workspace(STUDENT).student().studyingGoals());
         jdbc.update("UPDATE learning_plans SET status='CANCELLED' WHERE id=?",checked.requestId());
         assertEquals(0,service.workspace(STUDENT).student().achievedGoals());
     }
     @Test void enforcesRolesCsrfAndValidatesTheFinalRequest() throws Exception {
         mvc.perform(get("/api/intervention/students")).andExpect(status().isUnauthorized());
-        for(String role:List.of("TEACHER","PARENT")) mvc.perform(get(PATH).with(user("forbidden").roles(role))).andExpect(status().isForbidden());
+        for(String role:List.of("PARENT")) mvc.perform(get(PATH).with(user("forbidden").roles(role))).andExpect(status().isForbidden());
         mvc.perform(post(PATH+"/complete").with(user(ADMIN)).contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isForbidden());
         mvc.perform(post(PATH+"/preview").with(user(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isBadRequest());
         var review=service.preview(STUDENT,draft());
@@ -156,22 +155,18 @@ class InterventionWorkflowTests {
         var saved=service.complete(STUDENT,complete(service.preview(STUDENT,draft())),ACTOR);
         String id=saved.result().plan().id(),goal=saved.result().goals().getFirst().id();
         var original=saved.result().goals().getFirst().goalSnapshot();
-        assertTrue(original.has("level_domain_id")); assertEquals(4,original.path("schema_version").asInt());
+        assertTrue(original.has("level_domain_id")); assertEquals(5,original.path("schema_version").asInt());
         mvc.perform(patch("/api/plans/"+id).with(user(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content("{\"name\":\"Edited plan\",\"startDate\":\"2026-10-27\",\"status\":\"ACTIVE\"}"))
             .andExpect(status().isNoContent());
-        mvc.perform(patch("/api/plans/"+id+"/goals/"+goal).with(user(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content("{\"status\":\"IN_PROGRESS\"}"))
-            .andExpect(status().isNoContent());
-        mvc.perform(post("/api/plans/"+id+"/goals/"+goal+"/progress").with(user(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content("{\"notes\":\"Real observation\",\"successCount\":2,\"opportunityCount\":3}"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$[0].successCount").value(2));
-        mvc.perform(get("/api/plans/"+id+"/goals/"+goal+"/progress").with(user(ADMIN)))
-            .andExpect(status().isOk()).andExpect(jsonPath("$[0].notes").value("Real observation"));
-        mvc.perform(post("/api/plans/"+id+"/goals/"+goal+"/progress").with(user(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
-            .content("{\"notes\":\"Invalid counts\",\"successCount\":4,\"opportunityCount\":3}"))
-            .andExpect(status().isBadRequest());
-        mvc.perform(get("/api/plans/"+id+"/goals/"+goal+"/progress").with(user("parent").roles("PARENT")))
+        mvc.perform(post("/api/plans/"+id+"/goals/"+goal+"/evaluations").with(user(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"evaluationNotes\":\"Real observation\",\"achievementPercent\":79.99}"))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].resultStatus").value("NOT_ACHIEVED"));
+        mvc.perform(get("/api/plans/"+id+"/goals/"+goal+"/evaluations").with(user(ADMIN)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[0].evaluationNotes").value("Real observation"));
+        mvc.perform(post("/api/plans/"+id+"/goals/"+goal+"/evaluations").with(user(ADMIN)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"achievementPercent\":101}")) .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/plans/"+id+"/goals/"+goal+"/evaluations").with(user("parent").roles("PARENT")))
             .andExpect(status().isForbidden());
         var reread=service.workspace(STUDENT).plans().getFirst();
         assertEquals("Edited plan",reread.plan().name());

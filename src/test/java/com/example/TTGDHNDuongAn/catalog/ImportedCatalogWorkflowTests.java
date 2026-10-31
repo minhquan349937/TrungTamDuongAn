@@ -1,12 +1,14 @@
 package com.example.TTGDHNDuongAn.catalog;
 
 import static org.junit.jupiter.api.Assertions.*;
-import com.example.TTGDHNDuongAn.dto.GoalBankDtos.Target;
+import com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.Target;
 import com.example.TTGDHNDuongAn.dto.InterventionDtos.*;
 import com.example.TTGDHNDuongAn.dto.PlanProgressDtos.*;
 import com.example.TTGDHNDuongAn.service.GoalCatalogService;
 import com.example.TTGDHNDuongAn.service.InterventionService;
-import com.example.TTGDHNDuongAn.service.PlanProgressService;
+import com.example.TTGDHNDuongAn.service.GoalEvaluationService;
+import com.example.TTGDHNDuongAn.dto.GoalEvaluationDtos.Input;
+import com.example.TTGDHNDuongAn.security.AppUserPrincipal;
 import java.time.LocalDate;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -26,7 +28,7 @@ class ImportedCatalogWorkflowTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired InterventionService workflow;
     @Autowired GoalCatalogService catalog;
-    @Autowired PlanProgressService progress;
+    @Autowired GoalEvaluationService progress;
 
     @Test @Transactional(readOnly=true)
     void importedProgramsExposeEachDomainOnceAndLoadGoalsForTheExactLevelDomain() {
@@ -107,9 +109,9 @@ class ImportedCatalogWorkflowTests {
             var reread=workflow.workspace(student);
             assertEquals(assigned,reread.student().studyingGoals());
             String planGoal=saved.result().goals().getFirst().id();
-            progress.status(saved.result().plan().id(),planGoal,new GoalStatus("ACHIEVED"));
+            progress.create(saved.result().plan().id(),planGoal,new Input(new java.math.BigDecimal("80"),"RETRY",null),new AppUserPrincipal(actor,"admin@test.invalid","Test","ADMIN","unused"));
             assertEquals(1,workflow.workspace(student).student().achievedGoals());
-            progress.status(saved.result().plan().id(),planGoal,new GoalStatus("IN_PROGRESS"));
+            progress.create(saved.result().plan().id(),planGoal,new Input(new java.math.BigDecimal("50"),null,null),new AppUserPrincipal(actor,"admin@test.invalid","Test","ADMIN","unused"));
         }
         assertEquals(2,workflow.workspace(student).plans().size());
         // Spring rolls back students, learning_plans and plan_goals after the test.

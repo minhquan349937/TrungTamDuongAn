@@ -1,3 +1,5 @@
+> Tài liệu lịch sử trước V11. Luồng đang dùng được mô tả tại [PLAN_EVALUATIONS_V11.md](PLAN_EVALUATIONS_V11.md); không còn ngân hàng mục tiêu cá nhân.
+
 # Ngân hàng mục tiêu theo học sinh — V7
 
 **Luồng giao diện hiện tại:** xem [Kế hoạch can thiệp — 5 trang](INTERVENTION_WORKFLOW.md). Theo yêu cầu mới, Hoàn thành lưu trực tiếp `learning_plans` và `plan_goals` trong một transaction. API ngân hàng riêng V7 bên dưới vẫn được giữ để đọc dữ liệu cũ và tương thích, nhưng không còn là điểm hoàn tất của luồng giao diện chính.

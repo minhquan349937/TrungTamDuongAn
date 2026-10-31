@@ -1,6 +1,11 @@
 import { PlanProgress } from "./PlanProgress";
+import { PlanGoalAdder } from "./PlanGoalAdder";
+import { evaluationLabels } from "../services/goalEvaluationApi";
+import type { ReactNode } from "react";
+import { PlanAssessmentWorkspace } from "./PlanAssessmentWorkspace";
+import { PlanHistory } from "./PlanHistory";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Empty, Input, Spin } from "antd";
+import { Alert, Button, Empty, Input, Spin, Tag } from "antd";
 import {
   ArrowLeft,
   ArrowRight,
@@ -54,9 +59,9 @@ const statusText: Record<string, string> = {
 const tabs = [
   { id: "current", name: "Kế hoạch hiện tại" },
   { id: "history", name: "Lịch sử kế hoạch" },
-  { id: "bank", name: "Ngân hàng mục tiêu" },
+  { id: "evaluation", name: "Đánh giá kế hoạch" },
   { id: "achieved", name: "Mục tiêu đã hoàn thành" },
-  { id: "paused", name: "Mục tiêu đã dừng" },
+  { id: "not-achieved", name: "Mục tiêu chưa đạt" },
 ];
 
 function fromAssigned(row: AssignedGoal): GoalSelection {
@@ -76,7 +81,7 @@ function fromAssigned(row: AssignedGoal): GoalSelection {
       domainId: s.domain_id ?? "",
       domainName: s.domain_name ?? "Mục tiêu đã lưu",
       levelId: s.program_level_id ?? "",
-      levelName: s.level_number ? `Cấp độ ${s.level_number}` : "",
+      levelName: s.level_name ?? (s.level_number ? `Cấp độ ${s.level_number}` : ""),
       ageMinMonths: s.age_min_months ?? 0,
       ageMaxMonths: s.age_max_months ?? 0,
     },
@@ -94,9 +99,11 @@ function uniqueSelections(rows: GoalSelection[]) {
 export function SelectionOutline({
   rows,
   remove,
+  renderTargetFooter,
 }: {
   rows: GoalSelection[];
   remove?: (row: GoalSelection) => void;
+  renderTargetFooter?: (row: GoalSelection) => ReactNode;
 }) {
   const groups = [
     ...new Set(
@@ -104,7 +111,7 @@ export function SelectionOutline({
     ),
   ];
   return (
-    <ol className="ip-outline">
+    <ol className={`ip-outline${renderTargetFooter ? " ip-outline-managed" : ""}`}>
       {groups.map((group, index) => {
         const items = rows.filter(
           (row) =>
@@ -140,6 +147,7 @@ export function SelectionOutline({
                             <small className="ip-age">
                               {row.ageMinMonths}–{row.ageMaxMonths} tháng
                             </small>
+                            {renderTargetFooter?.(row)}
                           </div>
                           {remove && (
                             <Button
@@ -163,6 +171,7 @@ export function SelectionOutline({
   );
 }
 function Plans({ rows, onSaved }: { rows: PlanView[]; onSaved: () => void }) {
+  const { user } = useAuth();
   if (!rows.length)
     return <Empty description="Chưa có kế hoạch trong mục này" />;
   return (
@@ -186,7 +195,19 @@ function Plans({ rows, onSaved }: { rows: PlanView[]; onSaved: () => void }) {
           </div>
           <PlanProgress plan={plan} goals={goals} onSaved={onSaved} />
           {goals.length ? (
-            <SelectionOutline rows={goals.map(fromAssigned)} />
+            <SelectionOutline rows={goals.map(fromAssigned)} renderTargetFooter={target => {
+              const assigned = goals.find(row => selectionKey(row) === selectionKey(target))!;
+              return <div className="ip-outline-goal-footer">
+                <div className="ip-outline-goal-outcome">
+                  <Tag color={assigned.status === "ACHIEVED" ? "green" : assigned.status === "NOT_ACHIEVED" ? "orange" : "default"}>
+                    {evaluationLabels[assigned.status as keyof typeof evaluationLabels] ?? "Chưa thực hiện"}
+                  </Tag>
+                  {assigned.achievementPercent != null && <span>Tỷ lệ hoàn thành: <b>{new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(assigned.achievementPercent)}%</b></span>}
+                </div>
+                {(user?.role === "ADMIN" || user?.role === "TEACHER") && plan.status !== "CANCELLED" &&
+                  <PlanGoalAdder planId={plan.id} replaceGoalId={assigned.id} onSaved={onSaved} />}
+              </div>;
+            }} />
           ) : (
             <Empty description="Kế hoạch chưa có mục tiêu" />
           )}
@@ -204,7 +225,8 @@ export function RealInterventionPlans() {
   const parts = location.pathname.slice(root.length).split("/").filter(Boolean);
   const studentId = parts[0] ?? "";
   const step = parts[1] === "new" ? (parts[2] ?? "program") : "workspace";
-  const tab = new URLSearchParams(location.search).get("tab") ?? "current";
+  const requestedTab = new URLSearchParams(location.search).get("tab");
+  const tab = tabs.some(t => t.id === requestedTab) ? requestedTab! : "current";
   const base = `${root}/${studentId}`;
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -237,7 +259,7 @@ export function RealInterventionPlans() {
     }
   }
   useEffect(() => {
-    if (user?.role !== "ADMIN" || studentId) return;
+    if (!["ADMIN", "TEACHER"].includes(user?.role ?? "") || studentId) return;
     let active = true;
     setPending((n) => n + 1);
     void interventionApi
@@ -273,9 +295,9 @@ export function RealInterventionPlans() {
     }
   }, [step]);
   useEffect(() => {
-    if (!studentId || user?.role !== "ADMIN") return;
+    if (!studentId || !["ADMIN", "TEACHER"].includes(user?.role ?? "")) return;
     let active = true;
-    setWorkspace(null);
+    setWorkspace(current => current?.student.id === studentId ? current : null);
     setPending((n) => n + 1);
     void interventionApi
       .workspace(studentId)
@@ -332,24 +354,15 @@ export function RealInterventionPlans() {
       navigate(`${base}/new/targets`, { replace: true });
   }, [studentId, step, program, review, base, navigate]);
   function chooseProgram(row: ProgramSummary) {
-    const choose = () => {
-      if (program?.id !== row.id) {
-        setSelected([]);
-        setAges({});
-        setReview(null);
-        setRequestId(crypto.randomUUID());
-        setName(`Kế hoạch ${row.name}`);
-        setStartDate(today());
-        setProgram(row);
-      }
-    };
-    if (program?.id !== row.id && selected.length)
-      modal.confirm({
-        title: "Đổi chương trình?",
-        content: "Các lựa chọn trong lượt này sẽ được bỏ.",
-        onOk: choose,
-      });
-    else choose();
+    if (program?.id === row.id) return;
+    setAges({});
+    setReview(null);
+    if (!requestId) {
+      setRequestId(crypto.randomUUID());
+      setName("Kế hoạch học tập");
+      setStartDate(today());
+    }
+    setProgram(row);
   }
   function toggle(row: GoalSelection) {
     setSelected((current) =>
@@ -362,7 +375,7 @@ export function RealInterventionPlans() {
   function exit() {
     const leave = () => {
       setError("");
-      navigate(`${base}?tab=bank`);
+      navigate(`${base}?tab=current`);
     };
     if (!selected.length) leave();
     else
@@ -374,7 +387,7 @@ export function RealInterventionPlans() {
         onOk: leave,
       });
   }
-  if (user?.role !== "ADMIN")
+  if (!["ADMIN", "TEACHER"].includes(user?.role ?? "") || (user?.role === "TEACHER" && step !== "workspace"))
     return (
       <Alert
         type="warning"
@@ -391,10 +404,6 @@ export function RealInterventionPlans() {
     workspace?.plans
       .filter(({ plan }) => plan.status !== "CANCELLED")
       .flatMap(({ goals }) => goals) ?? [];
-  const bankItems = uniqueSelections([
-    ...allAssigned.map(fromAssigned),
-    ...(workspace?.bank.map((row) => row.goalSnapshot) ?? []),
-  ]);
   const filtered = students.filter((row) =>
     `${row.fullName} ${row.code}`
       .toLocaleLowerCase("vi")
@@ -533,7 +542,7 @@ export function RealInterventionPlans() {
             </Button>
             <span>
               Kế hoạch can thiệp /{" "}
-              {step === "workspace" ? "Hồ sơ học sinh" : "Ngân hàng mục tiêu"}
+              {step === "workspace" ? "Hồ sơ học sinh" : "Tạo kế hoạch học tập"}
             </span>
           </div>
           {student && (
@@ -571,12 +580,11 @@ export function RealInterventionPlans() {
                 <>
                   <div className="ip-section-heading">
                     <h2>Kế hoạch hiện tại</h2>
-                    <Button
-                      onClick={() => navigate(`${base}?tab=bank`)}
-                      icon={<BookOpen size={16} />}
-                    >
-                      Ngân hàng mục tiêu
-                    </Button>
+                    {user?.role === "ADMIN" && <Button type="primary"
+                      onClick={() => { setRequestId(""); navigate(`${base}/new/program`); }}
+                      icon={<Sparkles size={16} />}>
+                      Tạo kế hoạch học tập
+                    </Button>}
                   </div>
                   <Plans rows={activePlans} onSaved={() => setRefresh(n => n + 1)} />
                 </>
@@ -584,54 +592,22 @@ export function RealInterventionPlans() {
               {tab === "history" && (
                 <>
                   <h2>Lịch sử kế hoạch</h2>
-                  <Plans rows={workspace.plans} onSaved={() => setRefresh(n => n + 1)} />
+                  <PlanHistory plans={workspace.plans} studentName={workspace.student.fullName} />
                 </>
               )}
-              {tab === "bank" && (
-                <>
-                  <div className="ip-section-heading">
-                    <div>
-                      <h2>Ngân hàng mục tiêu</h2>
-                      <p>
-                        Mục tiêu đã lưu và các mục tiêu đã chọn trong kế hoạch
-                        của học sinh.
-                      </p>
-                    </div>
-                    <Button
-                      type="primary"
-                      icon={<Sparkles size={17} />}
-                      onClick={() => navigate(`${base}/new/program`)}
-                    >
-                      Gợi ý mục tiêu
-                    </Button>
-                  </div>
-                  {bankItems.length ? (
-                    <SelectionOutline rows={bankItems} />
-                  ) : (
-                    <section className="panel ip-bank-empty">
-                      <span className="ip-empty-symbol">
-                        <Target size={48} />
-                      </span>
-                      <h2>Sẵn sàng cho những bước tiến mới</h2>
-                      <p>
-                        Chọn mục tiêu từ thư viện chương trình để xây dựng kế
-                        hoạch phù hợp cho học sinh.
-                      </p>
-                    </section>
-                  )}
-                </>
-              )}
-              {["achieved", "paused"].includes(tab) && (
+              {tab === "evaluation" && <PlanAssessmentWorkspace key={workspace.student.id} plans={workspace.plans}
+                studentName={workspace.student.fullName} onSaved={() => setRefresh(n => n + 1)} />}
+              {["achieved", "not-achieved"].includes(tab) && (
                 <>
                   <h2>
                     {tab === "achieved"
                       ? "Mục tiêu đã hoàn thành"
-                      : "Mục tiêu đã dừng"}
+                      : "Mục tiêu chưa đạt"}
                   </h2>
                   {allAssigned.some(
                     (row) =>
                       row.status ===
-                      (tab === "achieved" ? "ACHIEVED" : "PAUSED"),
+                      (tab === "achieved" ? "ACHIEVED" : "NOT_ACHIEVED"),
                   ) ? (
                     <SelectionOutline
                       rows={uniqueSelections(
@@ -639,7 +615,7 @@ export function RealInterventionPlans() {
                           .filter(
                             (row) =>
                               row.status ===
-                              (tab === "achieved" ? "ACHIEVED" : "PAUSED"),
+                              (tab === "achieved" ? "ACHIEVED" : "NOT_ACHIEVED"),
                           )
                           .map(fromAssigned),
                       )}
@@ -732,7 +708,7 @@ export function RealInterventionPlans() {
                     )}
                   </section>
                   <div className="ip-footer">
-                    <span>Chọn một chương trình để bắt đầu.</span>
+                    <span>Chọn chương trình để thêm mục tiêu vào cùng kế hoạch.</span>
                     <Button
                       type="primary"
                       disabled={!program || busy}
@@ -755,7 +731,7 @@ export function RealInterventionPlans() {
                       </p>
                     </div>
                     <Button onClick={() => navigate(`${base}/new/program`)}>
-                      Đổi chương trình
+                      Chọn thêm từ chương trình khác
                     </Button>
                   </div>
                   <section className="panel ip-plan-fields">
@@ -786,6 +762,7 @@ export function RealInterventionPlans() {
                   </section>
                   {domains.map((group, index) => (
                     <InterventionDomainPicker
+                      studentId={studentId}
                       key={group.id}
                       group={group}
                       index={index}
@@ -795,7 +772,6 @@ export function RealInterventionPlans() {
                       domainId={ages[group.id] ?? ""}
                       onAgeChange={(id) => {
                         setAges((current) => ({ ...current, [group.id]: id }));
-                        setSelected((current) => current.filter((row) => !group.ages.some((age) => age.domainId === row.location.domainId)));
                         setReview(null);
                       }}
                     />
@@ -806,7 +782,7 @@ export function RealInterventionPlans() {
                   <div className="ip-footer ip-sticky">
                     <div>
                       <b>{selected.length} mục tiêu đã chọn</b>
-                      <p>Lựa chọn được giữ khi đổi lĩnh vực và độ tuổi.</p>
+                      <p>Có thể chọn thêm mục tiêu từ chương trình khác trước khi lưu.</p>
                     </div>
                     <Button
                       type="primary"

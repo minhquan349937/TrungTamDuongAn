@@ -10,6 +10,10 @@ $schema=if($settings['MYSQL_DATABASE']){ $settings['MYSQL_DATABASE'] }else{ 'duo
 if($schema -notmatch '^[a-zA-Z0-9_]+$'){ throw 'Invalid schema name' }
 Push-Location $projectRoot
 try {
+    $retired=docker compose exec -T -e "MYSQL_PWD=$($settings['MYSQL_ROOT_PASSWORD'])" mysql mysql --user=root --database=$schema `
+        --batch --skip-column-names --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='goal_evaluations'"
+    if($LASTEXITCODE -ne 0){ throw 'Cannot inspect schema' }
+    if([int]$retired -gt 0){ throw 'V11 uses plan goals and evaluations. The personal goal bank must not be recreated.' }
     $exists=docker compose exec -T -e "MYSQL_PWD=$($settings['MYSQL_ROOT_PASSWORD'])" mysql mysql --user=root --database=$schema `
         --batch --skip-column-names --execute="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='student_goal_bank'"
     if($LASTEXITCODE -ne 0){ throw 'Cannot inspect goal bank schema' }

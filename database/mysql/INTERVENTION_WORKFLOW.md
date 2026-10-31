@@ -1,3 +1,5 @@
+> Tài liệu lịch sử trước V11. Luồng đang dùng được mô tả tại [PLAN_EVALUATIONS_V11.md](PLAN_EVALUATIONS_V11.md); không còn ngân hàng mục tiêu cá nhân.
+
 # Kế hoạch can thiệp — luồng 5 trang
 
 ## Sau khi nhập catalog V8

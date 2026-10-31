@@ -15,13 +15,18 @@ public final class InterventionDtos {
     public record GoalChoice(String id, String code, String name, String description, int displayOrder,
             boolean hasSpecificGoals, boolean canSelectGeneralGoal) { }
     public record DomainTargets(boolean supportsSpecificGoals, List<GoalChoice> goals) { }
+    public record GoalLearningHistory(String goalId,String specificGoalId,String resultStatus,
+        java.math.BigDecimal achievementPercent,java.time.LocalDateTime evaluatedAt) {
+        public String key() { return specificGoalId==null ? "G:"+goalId : "S:"+specificGoalId; }
+    }
+    public record StudentDomainTargets(boolean supportsSpecificGoals,List<GoalChoice> goals,List<GoalLearningHistory> history) { }
     public record PlanView(StudentPlanDtos.Plan plan, List<PlanGoalDtos.AssignedGoal> goals) { }
-    public record Workspace(StudentSummary student, List<PlanView> plans, List<GoalBankDtos.BankEntry> bank) { }
+    public record Workspace(StudentSummary student, List<PlanView> plans) { }
     public record Draft(String requestId, String programId, String name, LocalDate startDate,
-            List<GoalBankDtos.Target> selections) { }
+            List<GoalSelectionDtos.Target> selections) { }
     public record Review(String requestId, String programId, String name, LocalDate startDate,
-            List<GoalBankDtos.Selection> items, int total, String reviewToken) { }
+            List<GoalSelectionDtos.Selection> items, int total, String reviewToken) { }
     public record Complete(String requestId, String programId, String name, LocalDate startDate,
-            List<GoalBankDtos.Target> selections, String reviewToken) { }
+            List<GoalSelectionDtos.Target> selections, String reviewToken) { }
     public record Saved(PlanView result, boolean alreadySaved) { }
 }

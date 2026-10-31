@@ -5,7 +5,6 @@ import {
   type GoalSelection,
   type AssignedGoal,
   type Plan,
-  type BankEntry,
 } from "./goalBankApi";
 export type StudentSummary = {
   id: string;
@@ -45,11 +44,16 @@ export type DomainTargets = {
   supportsSpecificGoals: boolean;
   goals: GoalChoice[];
 };
+export type GoalLearningHistory = GoalTarget & {
+  resultStatus: "NOT_STARTED" | "NOT_ACHIEVED" | "ACHIEVED";
+  achievementPercent: number | null;
+  evaluatedAt: string | null;
+};
+export type StudentDomainTargets = DomainTargets & { history: GoalLearningHistory[] };
 export type PlanView = { plan: Plan; goals: AssignedGoal[] };
 export type Workspace = {
   student: StudentSummary;
   plans: PlanView[];
-  bank: BankEntry[];
 };
 export type PlanDraft = {
   requestId: string;
@@ -76,6 +80,8 @@ export const interventionApi = {
     goalRequest<DomainGroup[]>(`${root}/programs/${id}/domains`),
   targets: (id: string) =>
     goalRequest<DomainTargets>(`${root}/level-domains/${id}/targets`),
+  studentTargets: (student: string, id: string) =>
+    goalRequest<StudentDomainTargets>(`${root}/students/${student}/level-domains/${id}/targets`),
   preview: (id: string, draft: PlanDraft) =>
     goalRequest<PlanReview>(`${root}/students/${id}/preview`, draft),
   complete: (id: string, review: PlanReview) =>

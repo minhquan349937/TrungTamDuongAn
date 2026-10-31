@@ -1,11 +1,10 @@
-import { useState } from "react";
-import { Button, Select } from "antd";
+import { useEffect, useState } from "react";
+import { Alert, Button, Select } from "antd";
 import {
   Users,
   UserRoundCheck,
   GraduationCap,
   School,
-  Plus,
   CalendarDays,
   ArrowRight,
   Clock,
@@ -28,10 +27,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useDemo } from "../hooks/useDemo";
 import { StatCard, SectionTitle, Badge } from "../components/ui";
-import { StudentsTable, StaffTable } from "../features/PeopleTables";
-import { RecordEditor } from "../features/RecordEditor";
+import { StudentsTable } from "../features/PeopleTables";
+import { DashboardStudentsTable, DashboardStaffTable } from "../features/DashboardPeopleTables";
 import { today, dateLabel, money } from "../utils/format";
 import { mockService } from "../services/mockService";
+import { dashboardApi, type DashboardSummary } from "../services/dashboardApi";
 export function Charts() {
   const { view } = useDemo(),
     [range, setRange] = useState("6");
@@ -193,11 +193,21 @@ export function Charts() {
 }
 export function Dashboard() {
   const { db, view, role, run } = useDemo(),
-    nav = useNavigate(),
-    [add, setAdd] = useState(false);
+    nav = useNavigate();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summaryError, setSummaryError] = useState("");
   const admin = role === "ADMIN",
     teacher = role === "TEACHER",
     day = today();
+  useEffect(() => {
+    if (!admin) return;
+    let active = true;
+    dashboardApi.summary().then(
+      (data) => { if (active) setSummary(data); },
+      (error: Error) => { if (active) setSummaryError(error.message); },
+    );
+    return () => { active = false; };
+  }, [admin]);
   const sessions = view.sessions.filter((s) => s.date === day);
   const unpaid = view.fees.filter((f) => !f.paidAt);
   const attendance = view.sessions.flatMap((s) => Object.values(s.attendance)),
@@ -227,63 +237,45 @@ export function Dashboard() {
                 : "Cùng con lớn lên mỗi ngày"}
             <span className="greeting-sun">☀</span>
           </h1>
-          <p>
-            {admin
-              ? "Chào Minh Anh! Cùng nhìn lại hoạt động của trung tâm hôm nay."
-              : teacher
-                ? "Lịch dạy, học sinh và công việc của cô, tất cả ở đây."
-                : "Theo dõi lịch học và những hoạt động của con tại Dương An."}
-          </p>
         </div>
         <div className="heading-actions">
           <span className="date-chip">
             <CalendarDays size={15} />
             {dateLabel(day)}
           </span>
-          {admin && (
-            <Button
-              type="primary"
-              icon={<Plus size={16} />}
-              onClick={() => setAdd(true)}
-            >
-              Thêm học sinh
-            </Button>
-          )}
         </div>
       </div>
+      {admin && summaryError && <Alert type="error" showIcon message={summaryError} style={{ marginBottom: 16 }} />}
       <div className="stats-grid">
         {admin ? (
           <>
             <StatCard
               label="Tổng học sinh"
-              value={db.students.length.toString().padStart(2, "0")}
+              value={summary ? summary.totalStudents.toString().padStart(2, "0") : "…"}
               icon={<Users size={22} />}
-              delta="+5 học sinh"
-              caption="so với tháng trước*"
+              delta={summary ? `${summary.studentsAdmittedThisMonth} học sinh` : "…"}
+              caption="nhập học tháng này"
             />
             <StatCard
               label="Học sinh đang theo học"
-              value={db.students.filter((s) => s.status === "Đang học").length}
+              value={summary?.activeStudents ?? "…"}
               icon={<UserRoundCheck size={22} />}
-              delta="90%"
-              caption="tỷ lệ đang theo học*"
+              delta={summary ? `${summary.totalStudents ? Math.round(summary.activeStudents / summary.totalStudents * 100) : 0}%` : "…"}
+              caption="tỷ lệ đang theo học"
             />
             <StatCard
               label="Giáo viên & nhân viên"
-              value={db.staff.length.toString().padStart(2, "0")}
+              value={summary ? summary.totalStaff.toString().padStart(2, "0") : "…"}
               icon={<GraduationCap size={23} />}
-              delta="+2 nhân viên"
-              caption="so với tháng trước*"
+              delta={summary ? `${summary.staffJoinedThisMonth} nhân viên` : "…"}
+              caption="gia nhập tháng này"
             />
             <StatCard
               label="Lớp đang hoạt động"
-              value={db.classes
-                .filter((c) => c.status === "Đang hoạt động")
-                .length.toString()
-                .padStart(2, "0")}
+              value={summary ? summary.activeClasses.toString().padStart(2, "0") : "…"}
               icon={<School size={22} />}
-              delta="3 hình thức"
-              caption="linh hoạt đồng hành"
+              delta={summary ? `${summary.activeClassTypes} hình thức` : "…"}
+              caption="lớp đang hoạt động"
             />
           </>
         ) : (
@@ -330,8 +322,8 @@ export function Dashboard() {
       {admin ? (
         <>
           <Charts />
-          <StudentsTable compact />
-          <StaffTable compact />
+          <DashboardStudentsTable />
+          <DashboardStaffTable />
           <div className="dashboard-bottom">
             <button onClick={() => nav("/schedule")}>
               <span className="mini-icon">
@@ -367,10 +359,6 @@ export function Dashboard() {
               <ArrowRight size={17} />
             </button>
           </div>
-          <p className="mock-footnote">
-            * Chỉ báo biến động minh họa. Số liệu tổng cập nhật theo dữ liệu
-            demo.
-          </p>
         </>
       ) : (
         <>
@@ -461,7 +449,6 @@ export function Dashboard() {
           </section>
         </>
       )}
-      {add && <RecordEditor kind="students" onClose={() => setAdd(false)} />}
     </>
   );
 }

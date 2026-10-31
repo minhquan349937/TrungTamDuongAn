@@ -18,11 +18,11 @@ public class InterventionRepository {
 
     private static final String STUDENTS = "SELECT s.id,s.code,s.full_name,s.birth_date,s.status," +
         "COALESCE(t.studying,0) studying,COALESCE(t.achieved,0) achieved FROM student s LEFT JOIN (" +
-        "SELECT lp.student_id,COUNT(DISTINCT CASE WHEN lp.status='ACTIVE' AND pg.status IN ('NOT_STARTED','IN_PROGRESS') " +
+        "SELECT lp.student_id,COUNT(DISTINCT CASE WHEN lp.status='ACTIVE' AND pg.status IN ('NOT_STARTED','NOT_ACHIEVED') " +
         "THEN IF(pg.specific_goal_id IS NULL,CONCAT('G:',pg.goal_id),CONCAT('S:',pg.specific_goal_id)) END) studying," +
         "COUNT(DISTINCT CASE WHEN pg.status='ACHIEVED' THEN IF(pg.specific_goal_id IS NULL,CONCAT('G:',pg.goal_id),CONCAT('S:',pg.specific_goal_id)) END) achieved " +
         "FROM learning_plans lp JOIN plan_goals pg ON pg.plan_id=lp.id WHERE lp.status<>'CANCELLED' " +
-        "AND NOT EXISTS(SELECT 1 FROM plan_goals newer WHERE newer.supersedes_id=pg.id) GROUP BY lp.student_id) t ON t.student_id=s.id ";
+        "GROUP BY lp.student_id) t ON t.student_id=s.id ";
 
     public List<StudentSummary> students(String search) {
         return jdbc.query(STUDENTS+"WHERE (?='' OR s.code LIKE CONCAT('%',?,'%') OR s.full_name LIKE CONCAT('%',?,'%')) ORDER BY s.code,s.id",
@@ -66,20 +66,19 @@ public class InterventionRepository {
         return jdbc.query("SELECT g.id,g.code,g.name,g.description,g.display_order,"+children+" has_children FROM goals g " +
             "WHERE g.level_domain_id=? AND g.is_active=1 ORDER BY g.display_order,g.id",
             (rs,n)->new GoalChoice(rs.getString("id"),rs.getString("code"),rs.getString("name"),rs.getString("description"),
-                rs.getInt("display_order"),rs.getBoolean("has_children"),!isVb || !rs.getBoolean("has_children")),domainId);
+                rs.getInt("display_order"),rs.getBoolean("has_children"),true),domainId);
     }
     public boolean lockStudent(String studentId) {
         return !jdbc.queryForList("SELECT id FROM student WHERE id=? FOR UPDATE",String.class,studentId).isEmpty();
     }
     public record ExistingPlan(StudentPlanDtos.Plan plan,String actorId) { }
     public Optional<ExistingPlan> existing(String id) {
-        return jdbc.query("SELECT id,student_id,name,start_date,status,created_by FROM learning_plans WHERE id=?",
-            (rs,n)->new ExistingPlan(new StudentPlanDtos.Plan(rs.getString("id"),rs.getString("student_id"),rs.getString("name"),
-                rs.getDate("start_date").toLocalDate(),rs.getString("status")),rs.getString("created_by")),id).stream().findFirst();
+        return jdbc.query(StudentPlanRepository.PLAN_SELECT+"WHERE lp.id=?",
+            (rs,n)->new ExistingPlan(StudentPlanRepository.plan(rs),rs.getString("created_by")),id).stream().findFirst();
     }
     public StudentPlanDtos.Plan insert(String studentId,Draft draft,String actorId) {
         jdbc.update("INSERT INTO learning_plans(id,student_id,name,start_date,status,created_by) VALUES(?,?,?,?,'ACTIVE',?)",
             draft.requestId(),studentId,draft.name().trim(),Date.valueOf(draft.startDate()),actorId);
-        return new StudentPlanDtos.Plan(draft.requestId(),studentId,draft.name().trim(),draft.startDate(),"ACTIVE");
+        return existing(draft.requestId()).orElseThrow().plan();
     }
 }
