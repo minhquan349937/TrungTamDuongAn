@@ -77,6 +77,14 @@ public class GoalCatalogService {
                 supportsSpecific,selectionPolicy.canSelectGeneralGoal(parent.programCode(),!children.isEmpty()),parent.location());
     }
 
+    public GoalCatalogDtos.Page<GoalCatalogDtos.Goal> availableGoals(String student,String id,String query,int page,int size) {
+        Kind.LEVEL_DOMAIN.validate(id);
+        if(query==null || page<0 || size<1 || size>100 || query.length()>100)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid paging or search parameters");
+        if(!repository.activeDomainExists(id)) throw notFound();
+        return repository.availableGoals(student,id,query.trim(),page,size);
+    }
+
     public java.util.Map<String,GoalCatalogDtos.GoalDetail> details(java.util.Collection<String> ids) {
         ids.forEach(Kind.GOAL::validate);
         var headers=repository.headers(ids);

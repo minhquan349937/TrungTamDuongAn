@@ -27,6 +27,7 @@ services:
       - ./database/mysql/migrations/V11__plan_goal_evaluations.sql:/docker-entrypoint-initdb.d/11_V11__plan_goal_evaluations.sql:ro
       - ./database/mysql/migrations/V12__plan_evaluations.sql:/docker-entrypoint-initdb.d/12_V12__plan_evaluations.sql:ro
       - ./database/mysql/migrations/V13__replace_plan_goal.sql:/docker-entrypoint-initdb.d/13_V13__replace_plan_goal.sql:ro
+      - ./database/mysql/migrations/V14__website.sql:/docker-entrypoint-initdb.d/14_V14__website.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=root --password=\"$$MYSQL_ROOT_PASSWORD\" --silent"]
       interval: 5s

@@ -1,10 +1,10 @@
 package com.example.TTGDHNDuongAn.service;
 
+import com.example.TTGDHNDuongAn.repository.ShortIds;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -36,23 +36,23 @@ public class IndividualAssignmentService {
     }
     @Transactional public Assignment create(Create input) {
         if(input==null) throw invalid();
-        uuid(input.studentId());uuid(input.teacherId());
+        validateId(input.studentId());validateId(input.teacherId());
         var students=jdbc.queryForList("SELECT full_name FROM student WHERE id=? AND status='ACTIVE' FOR UPDATE",String.class,input.studentId());
         if(students.isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Học sinh phải đang theo học.");
         requireTeacher(input.teacherId());
         if(list().stream().anyMatch(a->a.studentId().equals(input.studentId()) && a.teacherId().equals(input.teacherId())))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Giáo viên đã được phân công cho học sinh này.");
-        String cls=UUID.randomUUID().toString();
+        String cls=ShortIds.next(jdbc, "learning_class");
         Date date=Date.valueOf(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh")));
         String name="Cá nhân · "+students.getFirst();
         jdbc.update("INSERT INTO learning_class(id,code,name,class_type,teacher_id,capacity,starts_on,status) VALUES(?,?,?,'INDIVIDUAL',?,1,?,'ACTIVE')",
-            cls,"CN-"+cls.substring(0,8),name.substring(0,Math.min(150,name.length())),input.teacherId(),date);
+            cls,"CN-"+cls.substring(0,Math.min(8,cls.length())),name.substring(0,Math.min(150,name.length())),input.teacherId(),date);
         jdbc.update("INSERT INTO enrollment(id,class_id,student_id,started_on,status) VALUES(?,?,?,?,'ENROLLED')",
-            UUID.randomUUID().toString(),cls,input.studentId(),date);
+            ShortIds.next(jdbc, "enrollment"),cls,input.studentId(),date);
         return list().stream().filter(a->a.id().equals(cls)).findFirst().orElseThrow();
     }
     @Transactional public Assignment change(String id,Change input) {
-        uuid(id);if(input==null) throw invalid();uuid(input.teacherId());
+        validateId(id);if(input==null) throw invalid();validateId(input.teacherId());
         if(jdbc.queryForList("SELECT id FROM learning_class WHERE id=? AND class_type='INDIVIDUAL' AND status='ACTIVE' FOR UPDATE",String.class,id).isEmpty())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy phân công cá nhân đang hoạt động.");
         requireTeacher(input.teacherId());
@@ -67,8 +67,8 @@ public class IndividualAssignmentService {
         if(jdbc.queryForList("SELECT t.id FROM staff t JOIN app_user u ON u.id=t.user_id WHERE t.id=? AND t.status='ACTIVE' AND u.status='ACTIVE' AND u.role='TEACHER' FOR UPDATE",String.class,id).isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chọn giáo viên đang làm việc có tài khoản giáo viên hoạt động.");
     }
-    private void uuid(String id) {
-        try { UUID.fromString(id); } catch(IllegalArgumentException|NullPointerException ex) { throw invalid(); }
+    private void validateId(String id) {
+        try { if(!ShortIds.isId(id)) throw new IllegalArgumentException(); } catch(IllegalArgumentException|NullPointerException ex) { throw invalid(); }
     }
     private ResponseStatusException invalid() { return new ResponseStatusException(HttpStatus.BAD_REQUEST,"Thông tin phân công không hợp lệ."); }
 }

@@ -1,5 +1,6 @@
 package com.example.TTGDHNDuongAn.service;
 
+import com.example.TTGDHNDuongAn.repository.ShortIds;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -7,7 +8,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -97,7 +97,7 @@ public class StudentProfileService {
         validate(input,false);
         String code=nextStudentCode();
         String guardianCode=nextGuardianCode();
-        String studentId=UUID.randomUUID().toString(), guardianId=UUID.randomUUID().toString();
+        String studentId=ShortIds.next(jdbc, "student"), guardianId=ShortIds.next(jdbc, "guardian");
         jdbc.update("INSERT INTO student(id,code,full_name,birth_date,admitted_on,status,notes) VALUES(?,?,?,?,?,?,?)",
             studentId,code,input.fullName().trim(),Date.valueOf(input.birthDate()),Date.valueOf(input.admittedOn()),"ACTIVE",trimmed(input.notes()));
         jdbc.update("INSERT INTO guardian(id,code,full_name,phone,email,address) VALUES(?,?,?,?,?,?)",
@@ -123,7 +123,7 @@ public class StudentProfileService {
             "withdrawn_on=CASE WHEN ?='WITHDRAWN' THEN withdrawn_on ELSE NULL END WHERE id=?",
             input.code().trim(),input.fullName().trim(),Date.valueOf(input.birthDate()),Date.valueOf(input.admittedOn()),input.status(),trimmed(input.notes()),input.status(),id);
         if (old.guardian() == null) {
-            String guardianId=UUID.randomUUID().toString();
+            String guardianId=ShortIds.next(jdbc, "guardian");
             jdbc.update("INSERT INTO guardian(id,code,full_name,phone,email,address) VALUES(?,?,?,?,?,?)",
                 guardianId,nextGuardianCode(),input.guardian().fullName().trim(),
                 input.guardian().phone().trim(),trimmed(input.guardian().email()),trimmed(input.guardian().address()));

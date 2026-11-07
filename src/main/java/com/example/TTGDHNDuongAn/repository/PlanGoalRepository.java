@@ -1,7 +1,6 @@
 package com.example.TTGDHNDuongAn.repository;
 
 import java.util.List;
-import java.util.UUID;
 
 import com.example.TTGDHNDuongAn.dto.PlanGoalDtos;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,7 +9,10 @@ import tools.jackson.databind.ObjectMapper;
 
 @Repository
 public class PlanGoalRepository {
-    private static final String GOAL_COLUMNS = "SELECT pg.*,(SELECT e.achievement_percent FROM goal_evaluations e " +
+    private static final String GOAL_COLUMNS = "SELECT pg.*,EXISTS(SELECT 1 FROM goal_evaluations evaluated WHERE evaluated.plan_goal_id=pg.id) has_evaluations," +
+        "(SELECT JSON_ARRAYAGG(JSON_OBJECT('strategyId',ps.strategy_id,'name',s.name,'description',ps.description,'displayOrder',ps.display_order)) " +
+        "FROM plan_goal_strategies ps JOIN strategies s ON s.id=ps.strategy_id WHERE ps.plan_goal_id=pg.id) strategies_json," +
+        "(SELECT e.achievement_percent FROM goal_evaluations e " +
         "WHERE e.plan_goal_id=pg.id ORDER BY e.attempt_no DESC LIMIT 1) achievement_percent ";
     private final JdbcTemplate jdbc;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -23,8 +25,14 @@ public class PlanGoalRepository {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM learning_plans WHERE id=?", Integer.class, planId);
         return count != null && count > 0;
     }
+    public boolean hasEvaluations(String goalId) {
+        return Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM goal_evaluations WHERE plan_goal_id=?)",Boolean.class,goalId));
+    }
     public String planStudent(String planId) {
         return jdbc.query("SELECT student_id FROM learning_plans WHERE id=?",rs->rs.next()?rs.getString(1):null,planId);
+    }
+    public void lockStudent(String studentId) {
+        jdbc.queryForList("SELECT id FROM student WHERE id=? FOR UPDATE",String.class,studentId);
     }
     public String lockPlanStudent(String planId) {
         return jdbc.query("SELECT student_id FROM learning_plans WHERE id=? FOR UPDATE",rs->rs.next()?rs.getString(1):null,planId);
@@ -57,13 +65,13 @@ public class PlanGoalRepository {
     }
 
     public String insert(String planId, String goalId, String specificGoalId, String actorId) {
-        String id = UUID.randomUUID().toString();
+        String id = ShortIds.next(jdbc, "plan_goals");
         jdbc.update("INSERT INTO plan_goals(id,plan_id,goal_id,specific_goal_id,goal_snapshot,criteria_snapshot,assigned_by) " +
                         "VALUES(?,?,?,?,JSON_OBJECT(),JSON_OBJECT(),?)", id, planId, goalId, specificGoalId, actorId);
         return id;
     }
     public String insertReplacement(String planId,String oldRowId,String goalId,String specificGoalId,String actorId) {
-        String id=UUID.randomUUID().toString();
+        String id=ShortIds.next(jdbc, "plan_goals");
         jdbc.update("INSERT INTO plan_goals(id,plan_id,goal_id,specific_goal_id,goal_snapshot,criteria_snapshot,assigned_by,supersedes_id) " +
             "VALUES(?,?,?,?,JSON_OBJECT(),JSON_OBJECT(),?,?)",id,planId,goalId,specificGoalId,actorId,oldRowId);
         return id;
@@ -88,6 +96,15 @@ public class PlanGoalRepository {
                         rs.getString("specific_goal_id") == null ? rs.getString("goal_id") : rs.getString("specific_goal_id"),
                         mapper.readTree(rs.getString("goal_snapshot")),
                         mapper.readTree(rs.getString("criteria_snapshot")),
-                        rs.getString("status"),rs.getBigDecimal("achievement_percent")), id);
+                        rs.getString("status"),rs.getBigDecimal("achievement_percent"),readStrategies(rs.getString("strategies_json")),rs.getBoolean("has_evaluations")), id);
+    }
+    private List<com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.StrategySelection> readStrategies(String json) {
+        if(json==null) return List.of();
+        var nodes=new java.util.ArrayList<tools.jackson.databind.JsonNode>();
+        mapper.readTree(json).forEach(nodes::add);
+        nodes.sort(java.util.Comparator.comparingInt((tools.jackson.databind.JsonNode n)->n.path("displayOrder").asInt())
+            .thenComparing(n->n.path("strategyId").asText()));
+        return nodes.stream().map(n->new com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.StrategySelection(
+            n.path("strategyId").asText(),n.path("name").asText(),n.path("description").isNull()?null:n.path("description").asText())).toList();
     }
 }

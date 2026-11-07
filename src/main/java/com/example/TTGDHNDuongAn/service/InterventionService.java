@@ -1,5 +1,6 @@
 package com.example.TTGDHNDuongAn.service;
 
+import com.example.TTGDHNDuongAn.repository.ShortIds;
 import com.example.TTGDHNDuongAn.dto.InterventionDtos.*;
 import com.example.TTGDHNDuongAn.dto.GoalSelectionDtos;
 import com.example.TTGDHNDuongAn.repository.*;
@@ -23,11 +24,13 @@ public class InterventionService {
     private final GoalCatalogRepository catalog;
     private final GoalSelectionPolicy policy;
     private final StudentGoalHistoryService history;
+    private final StrategyService strategies;
     private final ObjectMapper mapper=new ObjectMapper();
     public InterventionService(InterventionRepository repository,StudentPlanRepository plans,PlanGoalRepository goals,
-            GoalTargetResolver targets,GoalCatalogRepository catalog,GoalSelectionPolicy policy,StudentGoalHistoryService history) {
+            GoalTargetResolver targets,GoalCatalogRepository catalog,GoalSelectionPolicy policy,StudentGoalHistoryService history,StrategyService strategies) {
         this.repository=repository; this.plans=plans; this.goals=goals; this.targets=targets; this.catalog=catalog; this.policy=policy;
         this.history=history;
+        this.strategies=strategies;
     }
     public List<StudentSummary> students(String q) {
         if(q==null || q.length()>100) throw bad("Từ khóa tối đa 100 ký tự.");
@@ -35,7 +38,7 @@ public class InterventionService {
     }
     @Transactional(readOnly=true)
     public Workspace workspace(String studentId) {
-        uuid(studentId);
+        validateId(studentId);
         var student=repository.student(studentId).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy học sinh."));
         var assigned=goals.listForStudent(studentId);
         var byPlan=assigned.stream().collect(java.util.stream.Collectors.groupingBy(com.example.TTGDHNDuongAn.dto.PlanGoalDtos.AssignedGoal::planId));
@@ -60,17 +63,20 @@ public class InterventionService {
     @Transactional(readOnly=true)
     public Review preview(String studentId,Draft draft) {
         validate(draft);
-        uuid(studentId);
+        validateId(studentId);
         if(repository.student(studentId).isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy học sinh.");
         history.requireSelectable(studentId,draft.selections());
         var checked=targets.resolveAll(draft.selections());
         var unique=new LinkedHashMap<String,GoalSelectionDtos.Selection>();
-        checked.forEach(item->unique.putIfAbsent(item.key(),item));
+        for(var item:checked) {
+            var input=draft.selections().stream().filter(t->key(t.goalId(),t.specificGoalId()).equals(key(item.goalId(),item.specificGoalId()))).findFirst().orElseThrow();
+            unique.putIfAbsent(item.key(),item.withStrategies(strategies.resolve(input.strategies())));
+        }
         return review(studentId,draft,List.copyOf(unique.values()));
     }
     @Transactional
     public Saved complete(String studentId,Complete request,String actorId) {
-        uuid(studentId);
+        validateId(studentId);
         // First SQL is a current-read lock, so two finishes for one student cannot race.
         if(!repository.lockStudent(studentId)) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy học sinh.");
         if(request==null || request.reviewToken()==null || !request.reviewToken().matches("[a-f0-9]{64}")) throw bad("Vui lòng xem lại mục tiêu trước khi hoàn thành.");
@@ -79,7 +85,7 @@ public class InterventionService {
         var existing=repository.existing(draft.requestId());
         if(existing.isPresent()) {
             var saved=existing.get();
-            var assigned=goals.list(draft.requestId());
+            var assigned=goals.list(saved.plan().id());
             var requestedKeys=new HashSet<String>();
             for(var target:draft.selections()) requestedKeys.add(key(target.goalId(),target.specificGoalId()));
             var savedKeys=new HashSet<String>();
@@ -87,20 +93,30 @@ public class InterventionService {
             if(!saved.plan().studentId().equals(studentId) || !saved.actorId().equals(actorId)
                     || !saved.plan().name().equals(draft.name().trim()) || !saved.plan().startDate().equals(draft.startDate())
                     || !savedKeys.equals(requestedKeys)) throw conflict("Lượt hoàn tất này đã được dùng cho lựa chọn khác.");
+            for(var target:draft.selections()) {
+                var row=assigned.stream().filter(g->key(g.goalId(),g.specificGoalId()).equals(key(target.goalId(),target.specificGoalId()))).findFirst().orElseThrow();
+                if(!strategies.matches(row.id(),target.strategies())) throw conflict("Chiến lược của lượt hoàn tất này đã thay đổi.");
+            }
             return new Saved(new PlanView(saved.plan(),assigned),true);
         }
         var checked=preview(studentId,draft);
         if(!MessageDigest.isEqual(checked.reviewToken().getBytes(StandardCharsets.UTF_8),request.reviewToken().getBytes(StandardCharsets.UTF_8)))
             throw conflict("Nội dung hoặc thông tin kế hoạch đã thay đổi. Vui lòng kiểm tra lại trước khi hoàn thành.");
         var plan=repository.insert(studentId,draft,actorId);
-        for(var item:checked.items()) goals.insert(plan.id(),item.goalId(),item.specificGoalId(),actorId);
+        for(var item:checked.items()) {
+            String goal=goals.insert(plan.id(),item.goalId(),item.specificGoalId(),actorId);
+            strategies.save(goal,item.strategies());
+        }
         return new Saved(new PlanView(plan,goals.list(plan.id())),false);
     }
     private String key(String goalId,String specificId) { return specificId==null ? "G:"+goalId : "S:"+specificId+":"+goalId; }
     private void validate(Draft draft) {
         if(draft==null || draft.name()==null || draft.name().isBlank() || draft.name().trim().length()>200 || draft.startDate()==null
             || draft.selections()==null || draft.selections().isEmpty() || draft.selections().size()>1000) throw bad("Nhập tên, ngày bắt đầu và chọn từ 1 đến 1000 mục tiêu.");
-        uuid(draft.requestId()); Kind.PROGRAM.validate(draft.programId());
+        try {
+            if(!UUID.fromString(draft.requestId()).toString().equalsIgnoreCase(draft.requestId())) throw new IllegalArgumentException();
+        } catch(IllegalArgumentException | NullPointerException ex) { throw bad("Invalid request token."); }
+        Kind.PROGRAM.validate(draft.programId());
         for(var target:draft.selections()) {
             if(target==null) throw bad("Mục tiêu không hợp lệ.");
             Kind.GOAL.validate(target.goalId()); if(target.specificGoalId()!=null) Kind.SPECIFIC.validate(target.specificGoalId());
@@ -114,8 +130,8 @@ public class InterventionService {
             return new Review(draft.requestId(),draft.programId(),draft.name().trim(),draft.startDate(),items,items.size(),token);
         } catch(NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
     }
-    private void uuid(String value) {
-        try { if(!UUID.fromString(value).toString().equalsIgnoreCase(value)) throw new IllegalArgumentException(); }
+    private void validateId(String value) {
+        try { if(!ShortIds.isId(value)) throw new IllegalArgumentException(); }
         catch(IllegalArgumentException | NullPointerException ex) { throw bad("Mã yêu cầu hoặc học sinh không hợp lệ."); }
     }
     private ResponseStatusException bad(String message) { return new ResponseStatusException(HttpStatus.BAD_REQUEST,message); }

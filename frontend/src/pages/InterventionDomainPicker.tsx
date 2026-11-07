@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { Alert, Button, Checkbox, Empty, Spin } from "antd";
 import { ChevronDown } from "lucide-react";
 import {
@@ -38,6 +39,7 @@ function GoalRow({
   toggle,
   supportsSpecificGoals,
   history,
+  renderStrategies,
 }: {
   goal: GoalChoice;
   age: AgeOption;
@@ -47,6 +49,7 @@ function GoalRow({
   toggle: (row: GoalSelection) => void;
   supportsSpecificGoals: boolean;
   history: GoalLearningHistory[];
+  renderStrategies: (row: GoalSelection) => ReactNode;
 }) {
   const [detail, setDetail] = useState<GoalDetail | null>(null);
   const [open, setOpen] = useState(false);
@@ -104,6 +107,8 @@ function GoalRow({
   return (
     <article className="ip-goal-row">
       <div className="ip-goal-main">
+        <div className="ip-goal-line">
+          <div className="ip-goal-title">
         {goal.canSelectGeneralGoal ? (
           <Checkbox
             checked={checked(choice(null))}
@@ -116,6 +121,9 @@ function GoalRow({
             Mục tiêu cụ thể của {goal.code} · {goal.name}
           </b>
         )}
+          </div>
+          {goal.canSelectGeneralGoal && renderStrategies(choice(null))}
+        </div>
         {goal.canSelectGeneralGoal && <LearningNote history={past(null)} />}
         {goal.canSelectGeneralGoal && goal.description && <p>{goal.description}</p>}
         {supportsSpecificGoals && goal.hasSpecificGoals && (
@@ -135,14 +143,22 @@ function GoalRow({
         <div className="ip-children">
           {loading && <Spin />}
           {error && <Alert type="error" message={error} />}
-          {detail?.specificGoals.filter(child => past(child.id)?.resultStatus !== "ACHIEVED").map((child) => (
+          {detail?.specificGoals.filter(child => {
+            const previous = past(child.id);
+            return !(previous?.hasEvaluations ?? (previous != null && previous.resultStatus !== "NOT_STARTED"));
+          }).map((child) => (
             <div key={child.id}>
+              <div className="ip-goal-line">
+                <div className="ip-goal-title">
               <Checkbox
                 checked={checked(choice(child))}
                 onChange={() => toggle(choice(child))}
               >
                 <b>{child.code}</b> · {child.description}
               </Checkbox>
+                </div>
+                {renderStrategies(choice(child))}
+              </div>
               <LearningNote history={past(child.id)} />
               <small className="ip-age">
                 {child.ageMinMonths}–{child.ageMaxMonths} tháng
@@ -161,6 +177,7 @@ function AgeGoals({
   program,
   selected,
   toggle,
+  renderStrategies,
 }: {
   studentId: string;
   age: AgeOption;
@@ -168,6 +185,7 @@ function AgeGoals({
   program: ProgramSummary;
   selected: GoalSelection[];
   toggle: (row: GoalSelection) => void;
+  renderStrategies: (row: GoalSelection) => ReactNode;
 }) {
   const [data, setData] = useState<StudentDomainTargets | null>(null);
   const [error, setError] = useState("");
@@ -208,6 +226,7 @@ function AgeGoals({
           toggle={toggle}
           supportsSpecificGoals={data.supportsSpecificGoals}
           history={data.history}
+          renderStrategies={renderStrategies}
         />
       ))}
     </div>
@@ -222,6 +241,7 @@ export function InterventionDomainPicker({
   toggle,
   domainId,
   onAgeChange,
+  renderStrategies,
 }: {
   studentId: string;
   group: DomainGroup;
@@ -231,6 +251,7 @@ export function InterventionDomainPicker({
   toggle: (row: GoalSelection) => void;
   domainId: string;
   onAgeChange: (id: string) => void;
+  renderStrategies: (row: GoalSelection) => ReactNode;
 }) {
   const age = group.ages.find((row) => row.levelDomainId === domainId);
   const count = selected.filter((row) =>
@@ -269,6 +290,7 @@ export function InterventionDomainPicker({
           program={program}
           selected={selected}
           toggle={toggle}
+          renderStrategies={renderStrategies}
         />
       ) : (
         <p className="ip-domain-hint">

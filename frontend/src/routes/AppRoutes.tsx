@@ -23,6 +23,8 @@ import { IndividualAssignments } from "../pages/IndividualAssignments";
 import { ParentPlanReports } from "../pages/PlanMonthlyEvaluations";
 import { GoalCatalogManager } from "../pages/GoalCatalogManager";
 import { LoginPage } from "../pages/LoginPage";
+import { PublicWebsitePage, WebsitePreviewPage } from "../pages/PublicWebsite";
+import { WebsiteManager } from "../pages/WebsiteManager";
 import { useAuth } from "../auth/AuthProvider";
 function Content() {
   const { role } = useDemo(),
@@ -40,6 +42,7 @@ function Content() {
   if (pathname === "/reports") return <ParentPlanReports />;
   if (pathname === "/transfers") return <Navigate to="/students" replace />;
   if (pathname === "/library") return <GoalCatalogManager />;
+  if (pathname === "/website") return <WebsiteManager />;
   if (
     pathname === "/individual/plan" ||
     pathname.startsWith("/individual/plan/")
@@ -99,10 +102,14 @@ function Content() {
 }
 export function AppRoutes() {
   const { user, loading } = useAuth();
+  const { pathname } = useLocation();
+  // The public website needs no session: render it before (and without) the login check.
+  if (pathname === "/gioi-thieu") return <PublicWebsitePage />;
   if (loading)
     return <div className="loading-screen"><Spin size="large" /><p>Đang kiểm tra phiên đăng nhập…</p></div>;
   return (
     <Routes>
+      <Route path="/gioi-thieu/xem-truoc" element={<WebsitePreviewPage />} />
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
       <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
         <Route index element={<Navigate to="/dashboard" replace />} />

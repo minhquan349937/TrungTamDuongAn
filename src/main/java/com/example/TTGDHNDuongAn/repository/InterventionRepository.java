@@ -73,12 +73,17 @@ public class InterventionRepository {
     }
     public record ExistingPlan(StudentPlanDtos.Plan plan,String actorId) { }
     public Optional<ExistingPlan> existing(String id) {
-        return jdbc.query(StudentPlanRepository.PLAN_SELECT+"WHERE lp.id=?",
+        return jdbc.query(StudentPlanRepository.PLAN_SELECT+(ShortIds.compactSchema(jdbc)?"WHERE lp.request_key=?":"WHERE lp.id=?"),
             (rs,n)->new ExistingPlan(StudentPlanRepository.plan(rs),rs.getString("created_by")),id).stream().findFirst();
     }
     public StudentPlanDtos.Plan insert(String studentId,Draft draft,String actorId) {
-        jdbc.update("INSERT INTO learning_plans(id,student_id,name,start_date,status,created_by) VALUES(?,?,?,?,'ACTIVE',?)",
-            draft.requestId(),studentId,draft.name().trim(),Date.valueOf(draft.startDate()),actorId);
+        if(!ShortIds.compactSchema(jdbc)) {
+            jdbc.update("INSERT INTO learning_plans(id,student_id,name,start_date,status,created_by) VALUES(?,?,?,?,'ACTIVE',?)",
+                draft.requestId(),studentId,draft.name().trim(),Date.valueOf(draft.startDate()),actorId);
+            return existing(draft.requestId()).orElseThrow().plan();
+        }
+        jdbc.update("INSERT INTO learning_plans(id,request_key,student_id,name,start_date,status,created_by) VALUES(?,?,?,?,?,'ACTIVE',?)",
+            ShortIds.next(jdbc, "learning_plans"),draft.requestId(),studentId,draft.name().trim(),Date.valueOf(draft.startDate()),actorId);
         return existing(draft.requestId()).orElseThrow().plan();
     }
 }

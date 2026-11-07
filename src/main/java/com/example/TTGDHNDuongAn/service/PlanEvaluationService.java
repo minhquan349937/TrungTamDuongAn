@@ -1,5 +1,6 @@
 package com.example.TTGDHNDuongAn.service;
 
+import com.example.TTGDHNDuongAn.repository.ShortIds;
 import com.example.TTGDHNDuongAn.dto.PlanEvaluationDtos.*;
 import com.example.TTGDHNDuongAn.model.plan.*;
 import com.example.TTGDHNDuongAn.repository.PlanEvaluationJpaRepository;
@@ -9,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -26,8 +26,8 @@ public class PlanEvaluationService {
         this.jdbc=jdbc;this.repository=repository;this.entities=entities;this.access=access;
     }
     private static LocalDateTime now(){return LocalDateTime.now(Clock.systemUTC());}
-    private static void uuid(String id) {
-        try { if(!UUID.fromString(id).toString().equalsIgnoreCase(id)) throw new IllegalArgumentException(); }
+    private static void validateId(String id) {
+        try { if(!ShortIds.isId(id)) throw new IllegalArgumentException(); }
         catch(IllegalArgumentException|NullPointerException ex) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Mã không hợp lệ."); }
     }
     private static String notes(Input input) {
@@ -37,7 +37,7 @@ public class PlanEvaluationService {
         return input.evaluationNotes().trim();
     }
     private String planStudent(String planId) {
-        uuid(planId);
+        validateId(planId);
         return jdbc.query("SELECT student_id FROM learning_plans WHERE id=?",rs->rs.next()?rs.getString(1):null,planId);
     }
     private void readAccess(String student,AppUserPrincipal actor) {
@@ -59,7 +59,7 @@ public class PlanEvaluationService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Chỉ người tạo được sửa hoặc công bố bản nháp.");
     }
     private PlanEvaluation locked(String id) {
-        uuid(id);
+        validateId(id);
         return repository.lockById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy nhận xét."));
     }
     private Report report(String id) {
@@ -86,7 +86,7 @@ public class PlanEvaluationService {
     }
     @Transactional(readOnly=true)
     public Report get(String id,AppUserPrincipal actor) {
-        uuid(id);Report row=report(id);
+        validateId(id);Report row=report(id);
         if(row==null) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy nhận xét.");
         readAccess(row.studentId(),actor);
         if("PARENT".equals(actor.role()) && !row.sentToParent())
@@ -96,7 +96,7 @@ public class PlanEvaluationService {
     @Transactional
     public Report create(String planId,Input input,AppUserPrincipal actor) {
         String text=notes(input);String student=planStudent(planId);writeAccess(student,actor);
-        PlanEvaluation row=repository.saveAndFlush(new PlanEvaluation(entities.getReference(LearningPlanEntity.class,planId),
+        PlanEvaluation row=repository.saveAndFlush(new PlanEvaluation(ShortIds.next(jdbc, "plan_evaluations"),entities.getReference(LearningPlanEntity.class,planId),
             entities.getReference(AppUserEntity.class,actor.id()),text,now()));
         return report(row.getId());
     }

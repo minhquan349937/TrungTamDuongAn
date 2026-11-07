@@ -206,6 +206,10 @@ export async function mockIntervention(page: Page) {
         role: "ADMIN",
       };
     else if (path === "/api/auth/csrf") data = { token: "csrf" };
+    else if (path === "/api/intervention/strategies") data = [
+      { id: "CL001", name: "Làm mẫu", description: null },
+      { id: "CL002", name: "Chờ đợi", description: null },
+    ];
     else if (path === "/api/programs") data = programs;
     else if (path === "/api/programs/PR0001/levels") data = [{ id: "LV0001", programId: "PR0001", levelNumber: 1, name: "Cấp độ 1", ageMinMonths: 12, ageMaxMonths: 24, displayOrder: 1 }];
     else if (path === "/api/levels/LV0001/domains") data = [{ levelDomainId: "LD0001", id: "DM0001", programLevelId: "LV0001", code: "LANG", name: "Ngôn ngữ", description: null, displayOrder: 1 }];
@@ -225,7 +229,7 @@ export async function mockIntervention(page: Page) {
     else if (/^\/api\/intervention\/students\/[^/]+\/level-domains\/[^/]+\/targets$/.test(path)) {
       const domain = path.split("/")[6];
       const history = path.split("/")[4] === studentId ? state.history : [];
-      const achieved = new Set(history.filter(h => h.resultStatus === "ACHIEVED").map(h => h.specificGoalId ? `S:${h.specificGoalId}` : `G:${h.goalId}`));
+      const achieved = new Set(history.filter(h => h.hasEvaluations ?? h.resultStatus !== "NOT_STARTED").map(h => h.specificGoalId ? `S:${h.specificGoalId}` : `G:${h.goalId}`));
       data = {
         supportsSpecificGoals: domain === "LD0004",
         goals: targets[domain].map(g => ({
@@ -241,6 +245,24 @@ export async function mockIntervention(page: Page) {
         supportsSpecificGoals: path.includes("LD0004"),
         goals: targets[path.split("/")[4]],
       };
+    else if (/^\/api\/plans\/[^/]+\/available-goals(?:\/[^/]+)?$/.test(path)) {
+      const evaluated = new Set([
+        ...state.history.filter(h => h.hasEvaluations ?? h.resultStatus !== "NOT_STARTED"),
+        ...state.plans.flatMap(p => p.goals).filter(g => g.hasEvaluations || g.achievementPercent != null),
+      ].map(g => g.specificGoalId ? `S:${g.specificGoalId}` : `G:${g.goalId}`));
+      const goalId = path.split("/")[5];
+      if (goalId) {
+        const selected = options.get(goalId)!;
+        data = { ...selected, id: goalId, supportsSpecificGoals: goalId === parent.id,
+          canSelectGeneralGoal: !evaluated.has(`G:${goalId}`),
+          specificGoals: goalId === parent.id ? children.filter(c => !evaluated.has(`S:${c.id}`)) : [] };
+      } else {
+        const domain = new URL(route.request().url()).searchParams.get("levelDomainId")!;
+        const content = targets[domain].filter(g => !evaluated.has(`G:${g.id}`) ||
+          (g.hasSpecificGoals && children.some(c => !evaluated.has(`S:${c.id}`))));
+        data = { content, page: 0, size: 20, totalElements: content.length, totalPages: content.length ? 1 : 0 };
+      }
+    }
     else if (path === `/api/goals/${parent.id}`) {
       state.childRequests++;
       data = {
@@ -261,9 +283,10 @@ export async function mockIntervention(page: Page) {
       state.previewCalls++;
       const draft = route.request().postDataJSON() as PlanDraft;
       expect(draft.requestId).toMatch(/^[a-f\d-]{36}$/);
-      const items = draft.selections.map((row: GoalTarget) =>
-        options.get(row.specificGoalId ?? row.goalId)!,
-      );
+      const items = draft.selections.map((row: GoalTarget) => ({
+        ...options.get(row.specificGoalId ?? row.goalId)!,
+        strategies: row.strategies?.map(s => ({ ...s, name: s.strategyId === "CL001" ? "Làm mẫu" : "Chờ đợi" })),
+      }));
       expect(items.every(Boolean)).toBe(true);
       data = {
         ...draft,
@@ -283,7 +306,7 @@ export async function mockIntervention(page: Page) {
       expect(
         body.selections.every(
           (row) =>
-            Object.keys(row).sort().join(",") === "goalId,specificGoalId",
+            Object.keys(row).every(key => ["goalId", "specificGoalId", "strategies"].includes(key)),
         ),
       ).toBe(true);
       let saved = state.plans.find(({ plan }) => plan.id === body.requestId);
@@ -303,6 +326,7 @@ export async function mockIntervention(page: Page) {
             )!;
             return {
               ...target,
+              strategies: target.strategies?.map(s => ({ ...s, name: s.strategyId === "CL001" ? "Làm mẫu" : "Chờ đợi" })),
               id: `assignment-${i}`,
               planId: body.requestId,
               targetType: selected.targetType,

@@ -3,7 +3,6 @@ package com.example.TTGDHNDuongAn.repository;
 import java.sql.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 import com.example.TTGDHNDuongAn.dto.StudentPlanDtos;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -32,7 +31,7 @@ public class StudentPlanRepository {
     }
 
     public StudentPlanDtos.Student insertStudent(StudentPlanDtos.CreateStudent request) {
-        String id = UUID.randomUUID().toString();
+        String id = ShortIds.next(jdbc, "student");
         jdbc.update("INSERT INTO student(id,code,full_name,birth_date,admitted_on) VALUES(?,?,?,?,?)",
                 id, request.code().trim(), request.fullName().trim(), Date.valueOf(request.birthDate()),
                 Date.valueOf(request.admittedOn()));
@@ -46,7 +45,7 @@ public class StudentPlanRepository {
     }
 
     public StudentPlanDtos.Plan insertPlan(String studentId, StudentPlanDtos.CreatePlan request, String actorId) {
-        String id = UUID.randomUUID().toString();
+        String id = ShortIds.next(jdbc, "learning_plans");
         jdbc.update("INSERT INTO learning_plans(id,student_id,name,start_date,created_by) VALUES(?,?,?,?,?)",
                 id, studentId, request.name().trim(), Date.valueOf(request.startDate()), actorId);
         return plans(studentId).stream().filter(p->p.id().equals(id)).findFirst().orElseThrow();

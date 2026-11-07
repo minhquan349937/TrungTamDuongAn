@@ -27,6 +27,7 @@ describe("intervention workflow API", () => {
           description: null,
           ageMinMonths: 12,
           ageMaxMonths: 24,
+          strategies: [{ strategyId: "CL001", name: "Làm mẫu", description: "Cô làm mẫu trước." }],
           location: {
             programId: "PR0001",
             programName: "Denver",
@@ -61,7 +62,8 @@ describe("intervention workflow API", () => {
       name: "My plan",
       startDate: "2026-10-27",
       reviewToken: review.reviewToken,
-      selections: [{ goalId: "GL000001", specificGoalId: null }],
+      selections: [{ goalId: "GL000001", specificGoalId: null,
+        strategies: [{ strategyId: "CL001", description: "Cô làm mẫu trước." }] }],
     });
     expect(fetchMock.mock.calls[1][1].headers["X-CSRF-TOKEN"]).toBe("csrf");
   });

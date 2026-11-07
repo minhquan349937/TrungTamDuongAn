@@ -9,6 +9,13 @@ import org.springframework.stereotype.Repository;
 public class GoalEvaluationRepository {
     private final JdbcTemplate jdbc;
     public GoalEvaluationRepository(JdbcTemplate jdbc) { this.jdbc=jdbc; }
+    public String nextId() { return ShortIds.next(jdbc, "goal_evaluations"); }
+    public String planStudent(String plan) {
+        return jdbc.queryForList("SELECT student_id FROM learning_plans WHERE id=?",String.class,plan).stream().findFirst().orElse(null);
+    }
+    public void lockStudent(String student) {
+        jdbc.queryForList("SELECT id FROM student WHERE id=? FOR UPDATE",String.class,student);
+    }
     public String lockPlanStudent(String plan) {
         return jdbc.queryForList("SELECT student_id FROM learning_plans WHERE id=? FOR UPDATE",String.class,plan)
             .stream().findFirst().orElse(null);

@@ -15,6 +15,9 @@ import com.example.TTGDHNDuongAn.service.StudentProfileService.GuardianInput;
 import com.example.TTGDHNDuongAn.service.StudentProfileService.ProfileInput;
 import com.example.TTGDHNDuongAn.service.StudentProfileService.Profile;
 import java.time.LocalDate;
+import com.example.TTGDHNDuongAn.repository.ShortIds;
+import org.mockito.MockedStatic;
+import static org.mockito.Mockito.mockStatic;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,10 +44,15 @@ class StudentProfileServiceTests {
     }
 
     @Test void generatesNextCodeAndActiveStatusWithoutClientValues() {
+        try (MockedStatic<ShortIds> ids = mockStatic(ShortIds.class)) {
+            ids.when(() -> ShortIds.next(jdbc, "staff")).thenReturn("NV003");
+            ids.when(() -> ShortIds.next(jdbc, "student")).thenReturn("HS003");
+            ids.when(() -> ShortIds.next(jdbc, "guardian")).thenReturn("PH003");
         var input = new ProfileInput(null, "Nguyễn Văn A", LocalDate.of(2022, 1, 1),
             LocalDate.of(2024, 1, 1), null, null,
             new GuardianInput("Nguyễn Văn Ông", "0912345678", null, null, "GRANDFATHER"));
         var subject = spy(service);
+        when(jdbc.queryForObject("SELECT next_value FROM profile_code_sequences WHERE entity_name='guardian' FOR UPDATE",Long.class)).thenReturn(1L);
         when(jdbc.queryForObject("SELECT next_value FROM student_code_sequence WHERE id=1 FOR UPDATE",Long.class)).thenReturn(1L);
         when(jdbc.queryForObject(startsWith("SELECT COALESCE(MAX(CAST(SUBSTRING(code,3)"),eq(Long.class))).thenReturn(2L);
         doReturn(new Profile("id","HS003","Nguyễn Văn A",input.birthDate(),input.admittedOn(),"ACTIVE",null,null))
@@ -58,5 +66,6 @@ class StudentProfileServiceTests {
         verify(jdbc).update(startsWith("INSERT INTO student("),anyString(),eq("HS003"),eq("Nguyễn Văn A"),
             any(),any(),eq("ACTIVE"),isNull());
         verify(jdbc).update(startsWith("INSERT INTO student_guardian("),anyString(),anyString(),eq("GRANDFATHER"));
+        }
     }
 }

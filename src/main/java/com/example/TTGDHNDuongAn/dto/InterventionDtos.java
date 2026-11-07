@@ -16,7 +16,7 @@ public final class InterventionDtos {
             boolean hasSpecificGoals, boolean canSelectGeneralGoal) { }
     public record DomainTargets(boolean supportsSpecificGoals, List<GoalChoice> goals) { }
     public record GoalLearningHistory(String goalId,String specificGoalId,String resultStatus,
-        java.math.BigDecimal achievementPercent,java.time.LocalDateTime evaluatedAt) {
+        java.math.BigDecimal achievementPercent,java.time.LocalDateTime evaluatedAt,boolean hasEvaluations) {
         public String key() { return specificGoalId==null ? "G:"+goalId : "S:"+specificGoalId; }
     }
     public record StudentDomainTargets(boolean supportsSpecificGoals,List<GoalChoice> goals,List<GoalLearningHistory> history) { }

@@ -3,7 +3,6 @@ package com.example.TTGDHNDuongAn.repository;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.UUID;
 
 import com.example.TTGDHNDuongAn.model.AppUser;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -32,7 +31,7 @@ public class AppUserRepository {
         jdbcTemplate.update(
                 "INSERT IGNORE INTO app_user (id, email, password_hash, display_name, role, status) " +
                         "VALUES (?, ?, ?, ?, ?, 'ACTIVE')",
-                UUID.randomUUID().toString(), normalizeEmail(user.email()), user.passwordHash(),
+                ShortIds.next(jdbcTemplate, "app_user"), normalizeEmail(user.email()), user.passwordHash(),
                 user.displayName(), user.role());
     }
 

@@ -123,10 +123,10 @@ class InterventionWorkflowTests {
             assertNotEquals(a.get().alreadySaved(),b.get().alreadySaved());
         }
         assertEquals(1,plans()); assertEquals(2,goals());
-        jdbc.update("INSERT INTO goal_evaluations(id,plan_goal_id,attempt_no,achievement_percent,evaluated_at,evaluated_by) SELECT ?,id,1,80,UTC_TIMESTAMP(6),? FROM plan_goals WHERE goal_id='GL000901' AND plan_id=?",UUID.randomUUID().toString(),ACTOR,checked.requestId());
+        jdbc.update("INSERT INTO goal_evaluations(id,plan_goal_id,attempt_no,achievement_percent,evaluated_at,evaluated_by) SELECT ?,id,1,80,UTC_TIMESTAMP(6),? FROM plan_goals WHERE goal_id='GL000901' AND plan_id=?",UUID.randomUUID().toString(),ACTOR,service.workspace(STUDENT).plans().getFirst().plan().id());
         assertEquals(1,service.workspace(STUDENT).student().studyingGoals()); assertEquals(1,service.workspace(STUDENT).student().achievedGoals());
         assertEquals(1,service.workspace(STUDENT).student().studyingGoals());
-        jdbc.update("UPDATE learning_plans SET status='CANCELLED' WHERE id=?",checked.requestId());
+        jdbc.update("UPDATE learning_plans SET status='CANCELLED' WHERE request_key=?",checked.requestId());
         assertEquals(0,service.workspace(STUDENT).student().achievedGoals());
     }
     @Test void enforcesRolesCsrfAndValidatesTheFinalRequest() throws Exception {

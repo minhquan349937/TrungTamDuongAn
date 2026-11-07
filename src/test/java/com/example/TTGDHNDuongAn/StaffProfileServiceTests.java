@@ -3,6 +3,9 @@ package com.example.TTGDHNDuongAn;
 import com.example.TTGDHNDuongAn.service.StaffProfileService;
 import com.example.TTGDHNDuongAn.service.StaffProfileService.Input;
 import java.time.LocalDate;
+import com.example.TTGDHNDuongAn.repository.ShortIds;
+import org.mockito.MockedStatic;
+import static org.mockito.Mockito.mockStatic;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,6 +29,10 @@ class StaffProfileServiceTests {
     }
 
     @Test void createsStaffWithNextDatabaseCode() {
+        try (MockedStatic<ShortIds> ids = mockStatic(ShortIds.class)) {
+            ids.when(() -> ShortIds.next(jdbc, "staff")).thenReturn("NV003");
+            ids.when(() -> ShortIds.next(jdbc, "student")).thenReturn("HS003");
+            ids.when(() -> ShortIds.next(jdbc, "guardian")).thenReturn("PH003");
         var input = new Input("Nguyễn Văn An", "Giáo viên", "Can thiệp sớm", null, null,
             LocalDate.of(2024,1,1), "ACTIVE");
         when(jdbc.queryForObject("SELECT next_value FROM profile_code_sequences WHERE entity_name='staff' FOR UPDATE", Long.class))
@@ -40,5 +47,6 @@ class StaffProfileServiceTests {
         verify(jdbc).update("UPDATE profile_code_sequences SET next_value=? WHERE entity_name='staff'", 4L);
         verify(jdbc).update(startsWith("INSERT INTO staff("), anyString(), eq("NV003"), eq("Nguyễn Văn An"),
             eq("Giáo viên"), eq("Can thiệp sớm"), isNull(), isNull(), any(), eq("ACTIVE"));
+        }
     }
 }

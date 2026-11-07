@@ -1,5 +1,6 @@
 package com.example.TTGDHNDuongAn.service;
 
+import com.example.TTGDHNDuongAn.repository.ShortIds;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -7,7 +8,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -64,7 +64,7 @@ public class StaffProfileService {
         long number = Math.max(next, maximum == null ? 1 : maximum + 1);
         if (number > 999999999L) throw new ResponseStatusException(HttpStatus.CONFLICT,"Đã hết dải mã nhân viên.");
         jdbc.update("UPDATE profile_code_sequences SET next_value=? WHERE entity_name='staff'", number + 1);
-        String id = UUID.randomUUID().toString();
+        String id = ShortIds.next(jdbc, "staff");
         jdbc.update("INSERT INTO staff(id,code,full_name,position,specialty,phone,email,joined_on,status) " +
             "VALUES(?,?,?,?,?,?,?,?,?)", id, "NV" + String.format(Locale.ROOT,"%03d",number),
             input.fullName().trim(), optional(input.position()), optional(input.specialty()),

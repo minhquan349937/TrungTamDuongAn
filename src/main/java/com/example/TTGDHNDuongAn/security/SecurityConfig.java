@@ -46,12 +46,17 @@ public class SecurityConfig {
             HttpSecurity http,
             SecurityContextRepository securityContextRepository) throws Exception {
         http
-                .csrf(csrf -> csrf.csrfTokenRepository(new HttpSessionCsrfTokenRepository()))
+                // Anonymous visitors have no session to forge; the endpoint is protected by validation and throttling instead.
+                .csrf(csrf -> csrf.csrfTokenRepository(new HttpSessionCsrfTokenRepository())
+                        .ignoringRequestMatchers("/api/public/consultations"))
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/public/website", "/api/public/website/media/*").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/public/consultations").permitAll()
+                        .requestMatchers("/api/admin/website/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/programs", "/api/programs/*/levels",
                                 "/api/programs/*/domains", "/api/levels/*/domains", "/api/level-domains/*/goals", "/api/goals/*").authenticated()
                         .requestMatchers("/api/programs", "/api/programs/*/levels", "/api/programs/*/domains", "/api/levels/*/domain-links", "/api/levels/*/domains",
@@ -59,6 +64,7 @@ public class SecurityConfig {
                                 "/api/goals/*/specific-goals/*").hasRole("ADMIN")
                         .requestMatchers("/api/plans/*/goals/*/evaluations", "/api/plans/*/goals/*/evaluations/*").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.GET, "/api/plans/*/goals").hasAnyRole("ADMIN", "TEACHER")
+                        .requestMatchers(HttpMethod.GET, "/api/plans/*/available-goals", "/api/plans/*/available-goals/*").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.POST, "/api/plans/*/goals").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.PUT, "/api/plans/*/goals/*/replace").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.PATCH, "/api/plans/*").hasAnyRole("ADMIN", "TEACHER")

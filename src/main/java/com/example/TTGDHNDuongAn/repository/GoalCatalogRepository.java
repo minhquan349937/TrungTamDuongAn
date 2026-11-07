@@ -88,6 +88,22 @@ public class GoalCatalogRepository {
         return new GoalCatalogDtos.Page<>(rows, page, size, count, (count + size - 1) / size);
     }
 
+    public GoalCatalogDtos.Page<GoalCatalogDtos.Goal> availableGoals(String student,String domain,String search,int page,int size) {
+        String where=" FROM goals g JOIN program_level_domains ld ON ld.id=g.level_domain_id JOIN programs p ON p.id=ld.program_id " +
+            "WHERE g.level_domain_id=? AND g.is_active=1 AND (?='' OR g.code LIKE CONCAT('%',?,'%') OR g.name LIKE CONCAT('%',?,'%')) AND (" +
+            "NOT EXISTS(SELECT 1 FROM plan_goals old JOIN learning_plans lp ON lp.id=old.plan_id JOIN goal_evaluations e ON e.plan_goal_id=old.id " +
+            "WHERE lp.student_id=? AND old.goal_id=g.id AND old.specific_goal_id IS NULL) OR " +
+            "(p.code NOT IN ('ESDM','DENVER') AND EXISTS(SELECT 1 FROM specific_goals sg WHERE sg.goal_id=g.id AND sg.is_active=1 " +
+            "AND NOT EXISTS(SELECT 1 FROM plan_goals old JOIN learning_plans lp ON lp.id=old.plan_id JOIN goal_evaluations e ON e.plan_goal_id=old.id " +
+            "WHERE lp.student_id=? AND old.specific_goal_id=sg.id))))";
+        Long total=jdbc.queryForObject("SELECT COUNT(*)"+where,Long.class,domain,search,search,search,student,student);
+        var rows=jdbc.query("SELECT g.id,g.code,g.name,g.description,g.display_order"+where+" ORDER BY g.display_order,g.id LIMIT ? OFFSET ?",
+            (rs,n)->new GoalCatalogDtos.Goal(rs.getString("id"),rs.getString("code"),rs.getString("name"),rs.getString("description"),rs.getInt("display_order")),
+            domain,search,search,search,student,student,size,(long)page*size);
+        long count=total==null?0:total;
+        return new GoalCatalogDtos.Page<>(rows,page,size,count,(count+size-1)/size);
+    }
+
     public Optional<GoalCatalogDtos.GoalHeader> goalHeader(String id) {
         if(!exists("SELECT COUNT(*) FROM goals g JOIN program_level_domains ld ON ld.id=g.level_domain_id JOIN domains d ON d.id=ld.domain_id JOIN programs p ON p.id=ld.program_id WHERE g.id=? AND g.is_active=1 AND d.is_active=1 AND p.is_active=1",id)) return Optional.empty();
         entityManager.clear();

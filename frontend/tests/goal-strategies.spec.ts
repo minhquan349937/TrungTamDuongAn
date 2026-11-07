@@ -1,0 +1,70 @@
+import { test, expect } from "@playwright/test";
+import { mockIntervention } from "./intervention-fixture";
+
+test("strategy choices belong to each target and survive age changes, review and save", async ({ page }) => {
+  const { state } = await mockIntervention(page);
+  await page.goto("/#/individual/plan");
+  await page.getByRole("button", { name: /Học sinh kiểm thử An/ }).click();
+  await page.getByRole("button", { name: "Tạo kế hoạch học tập", exact: true }).click();
+  await page.getByRole("radio", { name: "Denver", exact: true }).check();
+  await page.getByRole("button", { name: "Tiếp tục: Lĩnh vực can thiệp" }).click();
+  const age = page.getByRole("combobox", { name: "Độ tuổi Ngôn ngữ", exact: true });
+  await age.selectOption("LD0001");
+  const first = page.locator(".ip-goal-row").filter({ has: page.getByRole("checkbox", { name: /D\.1/ }) });
+  const rowBeforeOpening = await first.boundingBox();
+  await first.getByRole("button", { name: "Chiến lược cho D.1", exact: true }).click();
+  const firstStrategies = page.getByRole("group", { name: "Chiến lược D.1", exact: true });
+  await firstStrategies.getByRole("checkbox", { name: "Làm mẫu", exact: true }).check();
+  await firstStrategies.getByRole("textbox", { name: "Cách áp dụng Làm mẫu cho D.1" }).fill("Cô làm mẫu trước khi con thực hiện.");
+  await firstStrategies.getByRole("checkbox", { name: "Chờ đợi", exact: true }).check();
+  expect((await first.boundingBox())!.height).toBeCloseTo(rowBeforeOpening!.height, 0);
+  await page.screenshot({ path: "test-results/goal-strategies-targets.png", fullPage: true });
+  await expect(first.getByRole("checkbox", { name: /D\.1/ })).toBeChecked();
+  await first.getByRole("button", { name: "Chiến lược cho D.1", exact: true }).click();
+  await expect(firstStrategies).toHaveCount(0);
+  await age.selectOption("LD0002");
+  await age.selectOption("LD0001");
+  await first.getByRole("button", { name: "Chiến lược cho D.1", exact: true }).click();
+  await expect(firstStrategies.getByRole("checkbox", { name: "Làm mẫu", exact: true })).toBeChecked();
+  await expect(firstStrategies.getByRole("textbox", { name: "Cách áp dụng Làm mẫu cho D.1" })).toHaveValue("Cô làm mẫu trước khi con thực hiện.");
+  const second = page.locator(".ip-goal-row").filter({ has: page.getByRole("checkbox", { name: /D\.2/ }) });
+  await second.getByRole("button", { name: "Chiến lược cho D.2", exact: true }).click();
+  await expect(page.getByRole("group", { name: "Chiến lược D.2", exact: true }).getByRole("checkbox", { name: "Làm mẫu", exact: true })).not.toBeChecked();
+  await page.getByRole("button", { name: "Kiểm tra và hoàn tất" }).click();
+  await expect(page.locator(".ip-strategy-summary")).toContainText("Làm mẫu");
+  await expect(page.locator(".ip-strategy-summary")).toContainText("Cô làm mẫu trước khi con thực hiện.");
+  await page.screenshot({ path: "test-results/goal-strategies-review.png", fullPage: true });
+  await page.getByRole("button", { name: "Quay lại lựa chọn" }).click();
+  await expect(first.getByRole("checkbox", { name: /D\.1/ })).toBeChecked();
+  await page.getByRole("button", { name: "Kiểm tra và hoàn tất" }).click();
+  await page.getByRole("button", { name: "Hoàn thành", exact: true }).click();
+  await expect.poll(() => state.completeCalls).toBe(1);
+  expect(state.plans[0].goals[0].strategies).toHaveLength(2);
+});
+
+test("specific goals have their own strategies and loading errors can be retried", async ({ page }) => {
+  await mockIntervention(page);
+  let attempts = 0;
+  await page.route("**/api/intervention/strategies", async route => {
+    attempts++;
+    await route.fulfill({ status: attempts === 1 ? 503 : 200, contentType: "application/json",
+      body: JSON.stringify(attempts === 1 ? {} : [{ id: "CL001", name: "Làm mẫu", description: null }]) });
+  });
+  await page.goto("/#/individual/plan");
+  await page.getByRole("button", { name: /Học sinh kiểm thử An/ }).click();
+  await page.getByRole("button", { name: "Tạo kế hoạch học tập", exact: true }).click();
+  await page.getByRole("radio", { name: "Ngôn ngữ và kỹ năng xã hội", exact: true }).check();
+  await page.getByRole("button", { name: "Tiếp tục: Lĩnh vực can thiệp" }).click();
+  await page.getByRole("combobox", { name: "Độ tuổi Giao tiếp", exact: true }).selectOption("LD0004");
+  await page.getByRole("button", { name: /Chọn mục tiêu cụ thể/ }).click();
+  const child = page.getByRole("button", { name: "Chiến lược cho VB.1A", exact: true });
+  await child.click();
+  await page.getByRole("button", { name: "Thử lại", exact: true }).click();
+  const strategies = page.getByRole("group", { name: "Chiến lược VB.1A", exact: true });
+  await strategies.getByRole("checkbox", { name: "Làm mẫu", exact: true }).check();
+  await expect(page.getByRole("checkbox", { name: /VB\.1A/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /VB\.1B/ })).not.toBeChecked();
+  await page.getByRole("checkbox", { name: /VB\.1A/ }).uncheck();
+  await child.click();
+  await expect(strategies.getByRole("checkbox", { name: "Làm mẫu", exact: true })).not.toBeChecked();
+});

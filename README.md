@@ -68,6 +68,7 @@ Playwright hiện cấu hình Chrome trên Windows; xem hướng dẫn frontend 
 
 ## Tài liệu
 
+- [Website giới thiệu và Quản lý website (V14)](database/mysql/WEBSITE_V14.md)
 - [Hướng dẫn frontend](frontend/README.md)
 - [Kết quả kiểm thử frontend](frontend/TESTING.md)
 - [Hướng dẫn database](database/README.md)

@@ -45,6 +45,7 @@ export type DomainTargets = {
   goals: GoalChoice[];
 };
 export type GoalLearningHistory = GoalTarget & {
+  hasEvaluations?: boolean;
   resultStatus: "NOT_STARTED" | "NOT_ACHIEVED" | "ACHIEVED";
   achievementPercent: number | null;
   evaluatedAt: string | null;
@@ -70,6 +71,7 @@ export type PlanReview = Omit<PlanDraft, "selections"> & {
 export type SavedPlan = { result: PlanView; alreadySaved: boolean };
 const root = "/api/intervention";
 export const interventionApi = {
+  strategies: () => goalRequest<{ id: string; name: string; description: string | null }[]>(`${root}/strategies`),
   students: (q = "") =>
     goalRequest<StudentSummary[]>(
       `${root}/students?q=${encodeURIComponent(q)}`,
@@ -91,9 +93,10 @@ export const interventionApi = {
       name: review.name,
       startDate: review.startDate,
       reviewToken: review.reviewToken,
-      selections: review.items.map(({ goalId, specificGoalId }) => ({
+      selections: review.items.map(({ goalId, specificGoalId, strategies }) => ({
         goalId,
         specificGoalId,
+        ...(strategies?.length ? { strategies: strategies.map(({ strategyId, description }) => ({ strategyId, description })) } : {}),
       })),
     }),
 };

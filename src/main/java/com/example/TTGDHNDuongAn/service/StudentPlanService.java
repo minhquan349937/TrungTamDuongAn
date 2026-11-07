@@ -1,7 +1,7 @@
 package com.example.TTGDHNDuongAn.service;
 
+import com.example.TTGDHNDuongAn.repository.ShortIds;
 import java.util.List;
-import java.util.UUID;
 
 import com.example.TTGDHNDuongAn.dto.StudentPlanDtos;
 import com.example.TTGDHNDuongAn.repository.StudentPlanRepository;
@@ -53,9 +53,9 @@ public class StudentPlanService {
 
     private void requireStudent(String id) {
         try {
-            UUID.fromString(id);
+            if(!ShortIds.isId(id)) throw new IllegalArgumentException();
         } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid UUID", ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid ID", ex);
         }
         if (repository.student(id).isEmpty())
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found");

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, Input, Modal, Popconfirm, Spin, Tag } from "antd";
+import { Alert, Button, Input, Modal, Spin, Tag } from "antd";
 import { useAuth } from "../auth/AuthProvider";
 import { planEvaluationApi, type PlanEvaluation } from "../services/planEvaluationApi";
 import type { Plan } from "../services/goalBankApi";
@@ -49,12 +49,6 @@ export function PlanMonthlyEvaluations({ plan, studentName, onPlanChanged }: { p
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   }
-  async function publish(id: string) {
-    setBusy(true); setError("");
-    try { await planEvaluationApi.publish(id); await reload(); onPlanChanged(); }
-    catch (cause) { setError((cause as Error).message); }
-    finally { setBusy(false); }
-  }
   return <section className="ip-monthly-reports">
     <div className="ip-monthly-heading">
       <div><h3>Đánh giá cả kế hoạch</h3><p>Nhận xét chung của giáo viên về kế hoạch học tập.</p></div>
@@ -65,12 +59,6 @@ export function PlanMonthlyEvaluations({ plan, studentName, onPlanChanged }: { p
         <div className="ip-monthly-card-heading"><strong>{monthLabel(row.evaluatedAt)}</strong><Tag color={row.sentToParent ? "green" : "gold"}>{row.sentToParent ? "Đã công bố cho phụ huynh" : "Bản nháp"}</Tag></div>
         <p>{row.evaluationNotes}</p>
         <small>{row.evaluatedByName} · {dateLabel(row.evaluatedAt)}{row.sentAt ? ` · Công bố ${dateLabel(row.sentAt)}` : ""}</small>
-        {!row.sentToParent && (user?.role === "ADMIN" || user?.id === row.evaluatedBy) && <div className="ip-monthly-actions">
-          <Button onClick={() => open(row)}>Sửa bản nháp</Button>
-          <Popconfirm title="Công bố nhận xét cho phụ huynh?" description="Sau khi công bố, nội dung nhận xét sẽ được giữ nguyên." okText="Công bố" cancelText="Hủy" onConfirm={() => void publish(row.id)}>
-            <Button type="primary" disabled={busy}>Công bố trong cổng phụ huynh</Button>
-          </Popconfirm>
-        </div>}
       </article>)}</div>}
     <div className="ip-plan-assessment-actions">
       <Button type="primary" disabled={loading || busy} onClick={openAssessment}>{latest ? "Chỉnh sửa đánh giá" : "Đánh giá kế hoạch"}</Button>

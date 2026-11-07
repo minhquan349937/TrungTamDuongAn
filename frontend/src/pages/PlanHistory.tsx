@@ -35,11 +35,10 @@ export function PlanHistory({ plans, studentName }: { plans: PlanView[]; student
   return <>
     <div className="panel ip-history-table-wrap">
       <table className="ip-table ip-history-table">
-        <thead><tr><th>Tên kế hoạch</th><th>Thời gian dạy</th><th>Trạng thái</th><th>Gửi PH</th><th>Báo cáo KH</th></tr></thead>
+        <thead><tr><th>Tên kế hoạch</th><th>Thời gian dạy</th><th>Trạng thái</th><th>Báo cáo KH</th></tr></thead>
         <tbody>{plans.map(row => <tr key={row.plan.id} className={row.plan.status === "ACTIVE" ? "ip-history-current" : ""}>
           <td>{row.plan.name}</td><td>{period(row)}</td>
           <td><span className={`ip-history-status ${row.plan.status.toLowerCase()}`}><CheckCheck size={18} />{labels[row.plan.status] ?? row.plan.status}</span></td>
-          <td>{row.plan.sentToParent ? "Đã công bố" : "Chưa công bố"}</td>
           <td><Button type="link" className="ip-view-plan-report" disabled={!row.plan.hasEvaluation} onClick={() => setView(row)}>Xem đánh giá</Button>
             {!row.plan.hasEvaluation && <small className="ip-history-no-report">Chưa đánh giá</small>}</td>
         </tr>)}</tbody>
@@ -58,7 +57,6 @@ export function PlanHistory({ plans, studentName }: { plans: PlanView[]; student
             <div><dt>Tên giáo viên</dt><dd>{report.evaluatedByName}</dd></div>
             <div><dt>Ngày đánh giá</dt><dd>{timestamp(report.evaluatedAt)}</dd></div></dl>
           <h3>Đánh giá của giáo viên</h3><p>{report.evaluationNotes}</p>
-          <Tag color={report.sentToParent ? "green" : "gold"}>{report.sentToParent ? "Đã công bố cho phụ huynh" : "Bản nháp"}</Tag>
         </section>
         <h3 className="ip-history-goals-heading">Mục tiêu của kế hoạch · Kết quả hiện tại</h3>
         <div className="ip-history-table-wrap">

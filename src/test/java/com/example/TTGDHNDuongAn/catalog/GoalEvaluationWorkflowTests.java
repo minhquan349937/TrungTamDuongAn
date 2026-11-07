@@ -108,6 +108,7 @@ class GoalEvaluationWorkflowTests {
         assertEquals(5,evaluations.list(plan,goal,teacher).size());
     }
     @Test void enforcesTeacherAssignmentOwnershipCrossPlanAndCsrf() throws Exception {
+        var otherPlan=createPlan().result().plan().id();
         mvc.perform(get(endpoint()).with(user(otherTeacher))).andExpect(status().isForbidden());
         mvc.perform(post(endpoint()).with(user(teacher)).contentType(MediaType.APPLICATION_JSON).content("{\"achievementPercent\":80}"))
             .andExpect(status().isForbidden());
@@ -118,7 +119,6 @@ class GoalEvaluationWorkflowTests {
         mvc.perform(get(endpoint()).with(user("parent").roles("PARENT"))).andExpect(status().isForbidden());
         mvc.perform(get("/api/intervention/students/"+otherStudent).with(user(teacher))).andExpect(status().isForbidden());
         mvc.perform(get("/api/intervention/students").with(user(teacher))).andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1));
-        var otherPlan=createPlan().result().plan().id();
         var adminRow=evaluations.create(plan,goal,input("90"),admin).getFirst();
         mvc.perform(put(endpoint()+"/"+adminRow.id()).with(user(teacher)).with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content("{\"achievementPercent\":10}")) .andExpect(status().isForbidden());
@@ -173,7 +173,7 @@ class GoalEvaluationWorkflowTests {
         assertTrue(history.list(otherStudent).isEmpty());
     }
 
-    @Test void vbMainAndChildHaveIndependentHistoryAndCancelledPlansDoNotContribute() {
+    @Test void vbMainAndChildHaveIndependentHistoryAndCancellationDoesNotEraseEvaluation() {
         var goals=workflow.workspace(student).plans().getFirst().goals();
         var main=goals.stream().filter(g->g.goalId().equals(vb)&&g.specificGoalId()==null).findFirst().orElseThrow();
         var specific=goals.stream().filter(g->child.equals(g.specificGoalId())).findFirst().orElseThrow();
@@ -181,22 +181,24 @@ class GoalEvaluationWorkflowTests {
         evaluations.create(plan,specific.id(),input("40"),teacher);
         String domain=jdbc.queryForObject("SELECT level_domain_id FROM goals WHERE id=?",String.class,vb);
         var choices=history.targets(student,workflow.targets(domain));
-        var parent=choices.goals().stream().filter(g->g.id().equals(vb)).findFirst().orElseThrow();
-        assertFalse(parent.canSelectGeneralGoal());assertTrue(parent.hasSpecificGoals());
+        long remaining=jdbc.queryForObject("SELECT COUNT(*) FROM specific_goals WHERE goal_id=? AND is_active=1 AND id<>?",Long.class,vb,child);
+        var parent=choices.goals().stream().filter(g->g.id().equals(vb)).findFirst();
+        assertEquals(remaining>0,parent.isPresent());
+        parent.ifPresent(g->{assertFalse(g.canSelectGeneralGoal());assertTrue(g.hasSpecificGoals());});
         assertEquals("NOT_ACHIEVED",choices.history().stream().filter(h->child.equals(h.specificGoalId())).findFirst().orElseThrow().resultStatus());
         jdbc.update("UPDATE learning_plans SET status='CANCELLED' WHERE id=?",plan);
-        assertTrue(history.list(student).isEmpty());
+        assertTrue(history.list(student).stream().anyMatch(h->child.equals(h.specificGoalId()) && h.hasEvaluations()));
     }
 
     @Test void newlyPlannedAndNullAttemptsKeepTheLastMeasuredResultAndStaleReviewsAreRejected() {
-        evaluations.create(plan,goal,input("45"),teacher);
         var next=createPlan().result();
         var nextGoal=next.goals().stream().filter(g->g.goalId().equals(denver)).findFirst().orElseThrow();
-        evaluations.create(next.plan().id(),nextGoal.id(),input(null),teacher);
-        assertEquals(0,new BigDecimal("45").compareTo(history.list(student).stream().filter(h->h.key().equals("G:"+denver)).findFirst().orElseThrow().achievementPercent()));
         String program=jdbc.queryForObject("SELECT program_id FROM program_level_domains ld JOIN goals g ON g.level_domain_id=ld.id WHERE g.id=?",String.class,denver);
         var draft=new Draft(id(),program,"Next plan",LocalDate.now(),List.of(new Target(denver,null)));
         var review=workflow.preview(student,draft);
+        evaluations.create(plan,goal,input("45"),teacher);
+        evaluations.create(next.plan().id(),nextGoal.id(),input(null),teacher);
+        assertEquals(0,new BigDecimal("45").compareTo(history.list(student).stream().filter(h->h.key().equals("G:"+denver)).findFirst().orElseThrow().achievementPercent()));
         evaluations.create(next.plan().id(),nextGoal.id(),input("90"),teacher);
         var request=new Complete(review.requestId(),review.programId(),review.name(),review.startDate(),draft.selections(),review.reviewToken());
         assertEquals(409,assertThrows(ResponseStatusException.class,()->workflow.complete(student,request,admin.id())).getStatusCode().value());

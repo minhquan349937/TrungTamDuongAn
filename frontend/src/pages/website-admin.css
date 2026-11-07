@@ -1,0 +1,149 @@
+/* "Quản lý website" admin page */
+.wm-status {
+  margin-bottom: 16px;
+}
+.wm-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  align-items: center;
+  justify-content: space-between;
+}
+.wm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wm-sub {
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 13px;
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wm-stack {
+  display: grid;
+  gap: 16px;
+}
+.wm-hint {
+  margin: 0 0 12px;
+  color: #64748b;
+}
+.wm-pre {
+  white-space: pre-wrap;
+}
+.wm-order,
+.wm-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.wm-image {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.wm-image-preview {
+  display: grid;
+  place-items: center;
+  width: 140px;
+  height: 100px;
+  overflow: hidden;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 13px;
+}
+.wm-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wm-image-actions {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  max-width: 340px;
+}
+.wm-image-actions small {
+  color: #64748b;
+}
+.wm-image-actions > .ant-btn {
+  justify-self: start;
+}
+.wm-upload {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.wm-upload > .ant-btn {
+  justify-self: start;
+}
+.wm-media {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid #e2e8f0;
+}
+.wm-media-thumb img,
+.wm-media-thumb video {
+  width: 160px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #0f172a;
+}
+.wm-media-form {
+  display: grid;
+  gap: 8px;
+}
+.wm-media-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.wm-filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr);
+}
+.wm-detail-form {
+  margin-top: 20px;
+}
+@media (max-width: 760px) {
+  .wm-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wm-media {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wm-media-thumb img,
+  .wm-media-thumb video {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 10;
+  }
+}
+.wm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.wm-tabs .ant-radio-button-wrapper {
+  border-radius: 8px;
+  border-inline-start-width: 1px;
+}
+.wm-tabs .ant-radio-button-wrapper::before {
+  display: none;
+}

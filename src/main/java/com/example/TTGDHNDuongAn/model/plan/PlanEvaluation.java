@@ -2,7 +2,6 @@ package com.example.TTGDHNDuongAn.model.plan;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name="plan_evaluations")
@@ -16,8 +15,8 @@ public class PlanEvaluation {
     @Column(name="sent_at") private LocalDateTime sentAt;
     @Column(name="updated_at",nullable=false) private LocalDateTime updatedAt;
     protected PlanEvaluation() {}
-    public PlanEvaluation(LearningPlanEntity plan,AppUserEntity actor,String notes,LocalDateTime now) {
-        id=UUID.randomUUID().toString();learningPlan=plan;evaluatedBy=actor;
+    public PlanEvaluation(String id,LearningPlanEntity plan,AppUserEntity actor,String notes,LocalDateTime now) {
+        this.id=id;learningPlan=plan;evaluatedBy=actor;
         evaluationNotes=notes;evaluatedAt=now;updatedAt=now;
     }
     public String getId(){return id;}

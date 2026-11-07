@@ -13,8 +13,11 @@ public class InterventionController {
     private final InterventionService service;
     private final com.example.TTGDHNDuongAn.service.PlanAccessService access;
     private final com.example.TTGDHNDuongAn.service.StudentGoalHistoryService history;
+    private final com.example.TTGDHNDuongAn.service.StrategyService strategies;
     public InterventionController(InterventionService service,com.example.TTGDHNDuongAn.service.PlanAccessService access,
-        com.example.TTGDHNDuongAn.service.StudentGoalHistoryService history) { this.service=service; this.access=access; this.history=history; }
+        com.example.TTGDHNDuongAn.service.StudentGoalHistoryService history,
+        com.example.TTGDHNDuongAn.service.StrategyService strategies) { this.service=service; this.access=access; this.history=history; this.strategies=strategies; }
+    @GetMapping("/strategies") public List<com.example.TTGDHNDuongAn.service.StrategyService.Strategy> strategies() { return strategies.active(); }
     @GetMapping("/students") public List<StudentSummary> students(@RequestParam(defaultValue="") String q,Authentication auth) {
         var actor=(AppUserPrincipal)auth.getPrincipal();
         return service.students(q).stream().filter(s->access.canReadStudent(s.id(),actor)).toList();

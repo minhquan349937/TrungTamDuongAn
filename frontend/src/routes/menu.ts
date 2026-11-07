@@ -14,6 +14,7 @@ export const adminMenu: MenuGroup[] = [
       ["Thống kê tổng quan", "/dashboard"],
       ["Biểu đồ thống kê", "/analytics"],
       ["Tài khoản và phân quyền", "/accounts"],
+      ["Quản lý website", "/website"],
     ]),
   },
   {

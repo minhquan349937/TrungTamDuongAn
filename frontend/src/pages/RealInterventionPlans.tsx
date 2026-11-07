@@ -1,4 +1,5 @@
 import { PlanProgress } from "./PlanProgress";
+import { GoalStrategyPicker, type StrategyOption } from "./GoalStrategyPicker";
 import { PlanGoalAdder } from "./PlanGoalAdder";
 import { evaluationLabels } from "../services/goalEvaluationApi";
 import type { ReactNode } from "react";
@@ -69,6 +70,7 @@ function fromAssigned(row: AssignedGoal): GoalSelection {
   return {
     goalId: row.goalId,
     specificGoalId: row.specificGoalId,
+    strategies: row.strategies,
     targetType: row.targetType,
     code: s.code,
     name: s.goal_name ?? s.name,
@@ -144,10 +146,17 @@ export function SelectionOutline({
                           <div>
                             {row.specificGoalId && <b>{row.code}</b>}
                             {row.description && <p>{row.description}</p>}
-                            <small className="ip-age">
+                            {!renderTargetFooter && <small className="ip-age">
                               {row.ageMinMonths}–{row.ageMaxMonths} tháng
-                            </small>
+                            </small>}
                             {renderTargetFooter?.(row)}
+                            {!!row.strategies?.length && <div className="ip-strategy-summary">
+                              <b>Chiến lược</b>
+                              {row.strategies.map(strategy => <div key={strategy.strategyId}>
+                                <span>{strategy.name ?? strategy.strategyId}</span>
+                                {strategy.description && <p>{strategy.description}</p>}
+                              </div>)}
+                            </div>}
                           </div>
                           {remove && (
                             <Button
@@ -198,13 +207,14 @@ function Plans({ rows, onSaved }: { rows: PlanView[]; onSaved: () => void }) {
             <SelectionOutline rows={goals.map(fromAssigned)} renderTargetFooter={target => {
               const assigned = goals.find(row => selectionKey(row) === selectionKey(target))!;
               return <div className="ip-outline-goal-footer">
+                <small className="ip-age">{target.ageMinMonths}–{target.ageMaxMonths} tháng</small>
                 <div className="ip-outline-goal-outcome">
                   <Tag color={assigned.status === "ACHIEVED" ? "green" : assigned.status === "NOT_ACHIEVED" ? "orange" : "default"}>
                     {evaluationLabels[assigned.status as keyof typeof evaluationLabels] ?? "Chưa thực hiện"}
                   </Tag>
                   {assigned.achievementPercent != null && <span>Tỷ lệ hoàn thành: <b>{new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(assigned.achievementPercent)}%</b></span>}
                 </div>
-                {(user?.role === "ADMIN" || user?.role === "TEACHER") && plan.status !== "CANCELLED" &&
+                {(user?.role === "ADMIN" || user?.role === "TEACHER") && plan.status !== "CANCELLED" && !assigned.hasEvaluations && assigned.achievementPercent == null &&
                   <PlanGoalAdder planId={plan.id} replaceGoalId={assigned.id} onSaved={onSaved} />}
               </div>;
             }} />
@@ -235,6 +245,10 @@ export function RealInterventionPlans() {
   const [domains, setDomains] = useState<DomainGroup[]>([]);
   const [ages, setAges] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<GoalSelection[]>([]);
+  const [strategyOptions, setStrategyOptions] = useState<StrategyOption[]>([]);
+  const [strategyLoading, setStrategyLoading] = useState(false);
+  const [strategyError, setStrategyError] = useState("");
+  const [strategyRefresh, setStrategyRefresh] = useState(0);
   const [requestId, setRequestId] = useState("");
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState(today);
@@ -245,6 +259,17 @@ export function RealInterventionPlans() {
   const [notice, setNotice] = useState("");
   const [refresh, setRefresh] = useState(0);
   const busy = pending > 0;
+  useEffect(() => {
+    if (step !== "targets") return;
+    let active = true;
+    setStrategyLoading(true); setStrategyError("");
+    void interventionApi.strategies().then(rows => {
+      if (active) setStrategyOptions(rows);
+    }).catch((cause: Error) => {
+      if (active) setStrategyError(cause.message);
+    }).finally(() => { if (active) setStrategyLoading(false); });
+    return () => { active = false; };
+  }, [step, strategyRefresh]);
   const context = useRef("");
   context.current = `${studentId}:${step}`;
   async function run(action: () => Promise<void>) {
@@ -768,6 +793,17 @@ export function RealInterventionPlans() {
                       index={index}
                       program={program}
                       selected={selected}
+                      renderStrategies={row => <GoalStrategyPicker
+                        target={selected.find(item => selectionKey(item) === selectionKey(row)) ?? row}
+                        options={strategyOptions} loading={strategyLoading} error={strategyError}
+                        disabled={busy}
+                        retry={() => setStrategyRefresh(value => value + 1)}
+                        onChange={(target, strategies) => {
+                          setSelected(current => current.some(item => selectionKey(item) === selectionKey(target))
+                            ? current.map(item => selectionKey(item) === selectionKey(target) ? { ...item, strategies } : item)
+                            : [...current, { ...target, strategies }]);
+                          setReview(null);
+                        }} />}
                       toggle={toggle}
                       domainId={ages[group.id] ?? ""}
                       onAgeChange={(id) => {
@@ -800,9 +836,10 @@ export function RealInterventionPlans() {
                               name,
                               startDate,
                               selections: selected.map(
-                                ({ goalId, specificGoalId }) => ({
+                                ({ goalId, specificGoalId, strategies }) => ({
                                   goalId,
                                   specificGoalId,
+                                  strategies: strategies?.map(({ strategyId, description }) => ({ strategyId, description })),
                                 }),
                               ),
                             },

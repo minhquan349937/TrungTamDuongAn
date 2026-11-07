@@ -50,9 +50,13 @@ class PlanEvaluationWorkflowTests {
     @BeforeEach void setup() {
         admin=userAccount("ADMIN");teacher=userAccount("TEACHER");otherTeacher=userAccount("TEACHER");
         parent=userAccount("PARENT");otherParent=userAccount("PARENT");
-        plan=jdbc.queryForObject("SELECT id FROM learning_plans ORDER BY id LIMIT 1",String.class);
-        student=jdbc.queryForObject("SELECT student_id FROM learning_plans WHERE id=?",String.class,plan);
-        goal=jdbc.queryForObject("SELECT id FROM plan_goals WHERE plan_id=? LIMIT 1",String.class,plan);
+        student=id();
+        jdbc.update("INSERT INTO student(id,code,full_name,birth_date,admitted_on) VALUES(?,?,'Report student','2022-01-01','2023-01-01')",student,"RP-"+student.substring(0,8));
+        plan=com.example.TTGDHNDuongAn.repository.ShortIds.next(jdbc,"learning_plans");
+        jdbc.update("INSERT INTO learning_plans(id,student_id,name,start_date,created_by,status) VALUES(?,?,'Report test','2026-10-01',?,'ACTIVE')",plan,student,admin.id());
+        var targetIds=jdbc.queryForList("SELECT id FROM goals WHERE is_active=1 ORDER BY id LIMIT 2",String.class);
+        for(String targetId:targetIds) planGoals.assign(plan,new AssignGoal(targetId,null),admin);
+        goal=jdbc.queryForObject("SELECT id FROM plan_goals WHERE plan_id=? ORDER BY id LIMIT 1",String.class,plan);
         staff=id();guardian=id();
         jdbc.update("INSERT INTO staff(id,code,user_id,full_name,joined_on) VALUES(?,?,?,'Report teacher','2023-01-01')",staff,"RP-"+staff.substring(0,8),teacher.id());
         assignments.create(new IndividualAssignmentService.Create(student,staff));
@@ -87,9 +91,11 @@ class PlanEvaluationWorkflowTests {
         String replacementGoal=jdbc.queryForObject("SELECT g.id FROM goals g WHERE g.is_active=1 AND g.id<>? AND NOT EXISTS " +
             "(SELECT 1 FROM plan_goals pg WHERE pg.plan_id=? AND pg.goal_id=g.id AND pg.specific_goal_id IS NULL) ORDER BY g.id LIMIT 1",
             String.class,additionalGoal,plan);
-        var replacement=planGoals.replace(plan,goal,new AssignGoal(replacementGoal,null),teacher);
-        assertEquals(goal,jdbc.queryForObject("SELECT supersedes_id FROM plan_goals WHERE id=?",String.class,replacement.id()));
-        assertTrue(planGoals.list(plan,teacher).stream().noneMatch(item->item.id().equals(goal)));
+        assertEquals(409,assertThrows(ResponseStatusException.class,()->planGoals.replace(plan,goal,new AssignGoal(replacementGoal,null),teacher)).getStatusCode().value());
+        String unevaluated=planGoals.list(plan,teacher).stream().filter(item->!item.hasEvaluations() && !item.goalId().equals(additionalGoal)).findFirst().orElseThrow().id();
+        var replacement=planGoals.replace(plan,unevaluated,new AssignGoal(replacementGoal,null),teacher);
+        assertEquals(unevaluated,jdbc.queryForObject("SELECT supersedes_id FROM plan_goals WHERE id=?",String.class,replacement.id()));
+        assertTrue(planGoals.list(plan,teacher).stream().noneMatch(item->item.id().equals(unevaluated)));
         assertTrue(planGoals.list(plan,teacher).stream().anyMatch(item->item.id().equals(replacement.id())));
         assertFalse(goals.list(plan,goal,teacher).isEmpty());
         assertEquals("Bản nháp đã sửa",reports.get(first.id(),parent).evaluationNotes());

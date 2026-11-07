@@ -47,6 +47,8 @@ build/
 **/node_modules/
 **/.test-runtime/
 **/.backups/
+# Uploaded website media (set WEBSITE_UPLOAD_DIR to keep it elsewhere)
+/uploads/
 **/.sites.local/
 **/test-results/
 **/playwright-report/

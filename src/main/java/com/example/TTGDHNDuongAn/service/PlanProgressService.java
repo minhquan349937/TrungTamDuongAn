@@ -1,10 +1,10 @@
 package com.example.TTGDHNDuongAn.service;
+import com.example.TTGDHNDuongAn.repository.ShortIds;
 import com.example.TTGDHNDuongAn.dto.PlanProgressDtos.EditPlan;
 import com.example.TTGDHNDuongAn.dto.PlanProgressDtos.ChangeStatus;
 import com.example.TTGDHNDuongAn.repository.PlanProgressRepository;
 import com.example.TTGDHNDuongAn.security.AppUserPrincipal;
 import java.util.Set;
-import java.util.UUID;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import org.springframework.stereotype.Service;
@@ -17,7 +17,7 @@ public class PlanProgressService {
     private final PlanAccessService access;
     public PlanProgressService(PlanProgressRepository repository,PlanAccessService access) { this.repository=repository;this.access=access; }
     @Transactional public void edit(String id,EditPlan request,AppUserPrincipal actor) {
-        try { UUID.fromString(id); } catch(IllegalArgumentException|NullPointerException ex) {
+        try { if(!ShortIds.isId(id)) throw new IllegalArgumentException(); } catch(IllegalArgumentException|NullPointerException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Mã kế hoạch không hợp lệ.");
         }
         if(request==null||request.name()==null||request.name().isBlank()||request.name().length()>200||request.startDate()==null||
@@ -30,7 +30,7 @@ public class PlanProgressService {
         repository.edit(id,request);
     }
     @Transactional public void changeStatus(String id,ChangeStatus request,AppUserPrincipal actor) {
-        try { UUID.fromString(id); } catch(IllegalArgumentException|NullPointerException ex) {
+        try { if(!ShortIds.isId(id)) throw new IllegalArgumentException(); } catch(IllegalArgumentException|NullPointerException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Mã kế hoạch không hợp lệ.");
         }
         if(request==null || request.status()==null || !Set.of("PAUSED","COMPLETED").contains(request.status()))

@@ -52,7 +52,7 @@ class CatalogWriteApiTests {
         String vb = create("/api/programs", """
                 {"code":"WRITE-VB","name":"VB test"}
                 """).get("id").asText();
-        assertTrue(denver.matches("PR[0-9]{4,6}"));
+        assertTrue(denver.matches("PR[0-9]{3,6}"));
         assertNotEquals(denver, vb);
         List<String> domains = new ArrayList<>();
         for (String program : List.of(denver, vb)) {
@@ -77,7 +77,7 @@ class CatalogWriteApiTests {
                 {"code":"SAME.1","name":"General test goal","description":null,"displayOrder":1}
                 """);
         String vbId = vbGoal.get("id").asText();
-        assertTrue(denverGoal.matches("GL[0-9]{6}"));
+        assertTrue(denverGoal.matches("GL[0-9]{3,6}"));
         assertTrue(vbGoal.get("description").isNull());
         assertEquals(0, vbGoal.get("specificGoals").size());
         JsonNode detail = vbGoal;
@@ -86,7 +86,7 @@ class CatalogWriteApiTests {
                     "{\"code\":\"TEST." + code + "\",\"description\":\"Test content " + code + "\",\"displayOrder\":" + (code - 'A') + "}");
         }
         assertEquals(4, detail.get("specificGoals").size());
-        assertTrue(detail.get("specificGoals").get(0).get("id").asText().matches("SG[0-9]{6}"));
+        assertTrue(detail.get("specificGoals").get(0).get("id").asText().matches("SG[0-9]{3,6}"));
         assertEquals(12, detail.get("specificGoals").get(0).get("ageMinMonths").asInt());
         mvc.perform(get("/api/goals/" + denverGoal).with(user("parent").roles("PARENT")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.specificGoals").isArray())
@@ -163,7 +163,7 @@ class CatalogWriteApiTests {
             var ids=new HashSet<String>();
             try(var pool=Executors.newFixedThreadPool(8)) {
                 for(var result:pool.invokeAll(calls)) {
-                    String id=result.get(); assertTrue(id.matches("PR[0-9]{4,6}")); assertTrue(ids.add(id));
+                    String id=result.get(); assertTrue(id.matches("PR[0-9]{3,6}")); assertTrue(ids.add(id));
                 }
             }
             assertEquals(24,ids.size());

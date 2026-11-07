@@ -442,10 +442,11 @@
   white-space: pre-wrap;
 }
 .ip-outline-managed .ip-outline-target > div { flex: 1; }
-.ip-outline-goal-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; margin-top: 8px; }
-.ip-outline-goal-outcome { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; color: #657b96; font-size: 14px; }
+.ip-outline-goal-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; }
+.ip-outline-goal-footer > .ip-age { flex-shrink: 0; margin: 0; }
+.ip-outline-goal-outcome { display: flex; flex: 1; align-items: center; flex-wrap: wrap; gap: 8px 14px; color: #657b96; font-size: 14px; }
 .ip-outline-goal-outcome .ant-tag { margin: 0; border-radius: 6px; padding: 2px 10px; }
-.ip-outline-goal-footer .ant-btn { border-radius: 8px; }
+.ip-outline-goal-footer .ant-btn { border-radius: 8px; margin-left: auto; flex-shrink: 0; }
 .ip-plan-management-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .ip-plan-management-actions .ant-btn { height: 38px; border-radius: 9px; padding-inline: 15px; font-size: 14px; }
 .ip-progress.ip-progress-manage { margin: 0; }
@@ -623,8 +624,14 @@
 .ip-monthly-editor textarea { line-height: 1.7; }
 .ip-parent-reports .ip-monthly-list { margin-top: 0; }
 @media(max-width:600px) { .ip-monthly-reports { padding: 18px; } .ip-monthly-actions .ant-btn { width: 100%; } }
-.ip-add-goal-form { display: grid; gap: 18px; padding: 12px 0; }
-.ip-add-goal-form label { display: grid; gap: 8px; color: #344b68; font-weight: 600; }
+.ip-add-goal-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; min-width: 0; padding: 12px 0; }
+.ip-add-goal-form label { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; color: #344b68; font-weight: 600; }
+.ip-add-goal-form .ant-select { width: 100%; min-width: 0; max-width: 100%; }
+.ip-add-goal-form .ant-select-single { height: auto; min-height: 36px; }
+.ip-add-goal-form .ant-select-single .ant-select-selector { height: auto !important; min-height: 36px; padding-block: 6px !important; }
+.ip-add-goal-form .ant-select-single .ant-select-selection-item { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; line-height: 1.6 !important; }
+.ip-add-goal-options .ant-select-item-option-content { white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
+.ip-add-goal-modal .ant-modal-title { padding-right: 24px; overflow-wrap: anywhere; }
 .ip-assessment-workspace { display: grid; gap: 24px; }
 .ip-assessment-picker { display: grid; gap: 10px; color: #344b68; font-weight: 600; }
 .ip-assessment-picker .ant-select { width: 100%; min-width: 0; }
@@ -662,6 +669,22 @@
 .ip-history-report-summary dd { margin: 6px 0 0; color: #344b68; font-weight: 600; }
 .ip-history-report-summary h3 { margin: 0 0 12px; color: #344b68; }
 .ip-history-report-summary p { margin: 0 0 16px; white-space: pre-wrap; line-height: 1.8; }
+.ip-goal-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ip-goal-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ip-goal-title .ant-checkbox-wrapper { align-items: flex-start; }
+.ip-strategies { flex-shrink: 0; }
+.ip-strategies .ant-btn { color: #39725c; border-color: #dce8e1; border-radius: 7px; white-space: nowrap; }
+.ip-strategy-popover { max-width: calc(100vw - 24px); }
+.ip-strategy-popover .ant-popover-inner { width: 360px; max-width: calc(100vw - 24px); padding: 12px; }
+.ip-strategy-popover-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ip-strategy-options { max-height: min(340px, 55vh); overflow-y: auto; overscroll-behavior: contain; padding: 4px 4px 4px 0; }
+.ip-strategy-option + .ip-strategy-option { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e9e3; }
+.ip-strategy-option > small { display: block; margin: 4px 0 6px 24px; color: #64748b; }
+.ip-strategy-option .ant-input { margin-top: 8px; }
+.ip-strategy-summary { margin-top: 10px; padding: 10px 12px; border-left: 3px solid #a5c9b4; background: #f6faf7; border-radius: 4px; }
+.ip-strategy-summary > b { font-size: 12px; color: #47725d; }
+.ip-strategy-summary > div { margin-top: 6px; }
+.ip-strategy-summary p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .ip-history-goals-heading { margin: 26px 0 16px; color: #344b68; }
 .ip-history-goals-table { min-width: 1050px; }
 .ip-history-goals-table td { vertical-align: top; line-height: 1.7; }
