@@ -429,6 +429,9 @@ export function RealInterventionPlans() {
     workspace?.plans
       .filter(({ plan }) => plan.status !== "CANCELLED")
       .flatMap(({ goals }) => goals) ?? [];
+  const outcomeGoals = allAssigned.filter(
+    row => row.status === (tab === "achieved" ? "ACHIEVED" : "NOT_ACHIEVED"),
+  );
   const filtered = students.filter((row) =>
     `${row.fullName} ${row.code}`
       .toLocaleLowerCase("vi")
@@ -629,21 +632,21 @@ export function RealInterventionPlans() {
                       ? "Mục tiêu đã hoàn thành"
                       : "Mục tiêu chưa đạt"}
                   </h2>
-                  {allAssigned.some(
-                    (row) =>
-                      row.status ===
-                      (tab === "achieved" ? "ACHIEVED" : "NOT_ACHIEVED"),
-                  ) ? (
+                  {outcomeGoals.length > 0 ? (
                     <SelectionOutline
-                      rows={uniqueSelections(
-                        allAssigned
-                          .filter(
-                            (row) =>
-                              row.status ===
-                              (tab === "achieved" ? "ACHIEVED" : "NOT_ACHIEVED"),
-                          )
-                          .map(fromAssigned),
-                      )}
+                      rows={uniqueSelections(outcomeGoals.map(fromAssigned))}
+                      renderTargetFooter={target => {
+                        const assigned = outcomeGoals.find(row => selectionKey(row) === selectionKey(target))!;
+                        return <div className="ip-outline-goal-footer">
+                          <small className="ip-age">{target.ageMinMonths}–{target.ageMaxMonths} tháng</small>
+                          <div className="ip-outline-goal-outcome">
+                            <Tag color={assigned.status === "ACHIEVED" ? "green" : "orange"}>
+                              {evaluationLabels[assigned.status as keyof typeof evaluationLabels]}
+                            </Tag>
+                            {assigned.achievementPercent != null && <span>Tỷ lệ hoàn thành: <b>{new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(assigned.achievementPercent)}%</b></span>}
+                          </div>
+                        </div>;
+                      }}
                     />
                   ) : (
                     <Empty description="Chưa có mục tiêu trong mục này" />

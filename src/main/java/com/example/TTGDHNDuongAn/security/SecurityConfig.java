@@ -69,6 +69,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/plans/*/goals/*/replace").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.PATCH, "/api/plans/*").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.PATCH, "/api/plans/*/status").hasAnyRole("ADMIN", "TEACHER")
+                        .requestMatchers(HttpMethod.POST, "/api/learning-plans/*/ai-summary").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.GET, "/api/learning-plans/*/evaluations", "/api/plan-evaluations/*").hasAnyRole("ADMIN", "TEACHER", "PARENT")
                         .requestMatchers("/api/learning-plans/*/evaluations", "/api/plan-evaluations/*", "/api/plan-evaluations/*/send").hasAnyRole("ADMIN", "TEACHER")
                         .requestMatchers(HttpMethod.GET, "/api/intervention/**").hasAnyRole("ADMIN", "TEACHER")

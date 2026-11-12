@@ -264,9 +264,6 @@ export function AppLayout() {
           )}
           <Outlet />
         </main>
-        <footer className="page-footer">
-          <span>Dương An · Cùng con lớn lên mỗi ngày</span>
-        </footer>
       </div>
     </div>
   );

@@ -2,7 +2,9 @@ import { Form, Input, InputNumber, Modal, Select } from "antd";
 import { useEffect } from "react";
 import { useDemo } from "../hooks/useDemo";
 import { mockService } from "../services/mockService";
-import type { Collection, Entity, SchoolClass, Session } from "../types";
+import type { AssignmentTeacher } from "../services/individualAssignmentApi";
+import type { StudentProfile } from "../services/studentProfileApi";
+import type { Collection, Entity, SchoolClass, Session, Student } from "../types";
 import { today } from "../utils/format";
 const labels: Record<Collection, string> = {
   students: "học sinh",
@@ -17,11 +19,19 @@ export function RecordEditor({
   record,
   onClose,
   initialType,
+  classTeachers = [],
+  teachersLoading = false,
+  classStudents = [],
+  studentsLoading = false,
 }: {
   kind: Collection;
   record?: Entity;
   onClose: () => void;
   initialType?: string;
+  classTeachers?: AssignmentTeacher[];
+  teachersLoading?: boolean;
+  classStudents?: StudentProfile[];
+  studentsLoading?: boolean;
 }) {
   const { db, role, run } = useDemo();
   const [form] = Form.useForm();
@@ -36,7 +46,7 @@ export function RecordEditor({
               : kind === "classes"
                 ? "Đang hoạt động"
                 : "Chờ duyệt",
-        teacherId: role === "TEACHER" ? "NV001" : db.staff[0]?.id,
+        teacherId: kind === "classes" ? undefined : role === "TEACHER" ? "NV001" : db.staff[0]?.id,
         parentId: db.parents[0]?.id,
         joined: today(),
         type: initialType ?? "Cá nhân",
@@ -82,6 +92,18 @@ export function RecordEditor({
           }[kind],
         )),
     };
+    const selectedTeacher = kind === "classes" ? classTeachers.find(t => t.id === values.teacherId) : undefined;
+    if (kind === "classes" && !selectedTeacher) {
+      form.setFields([{ name: "teacherId", errors: ["Vui lòng chọn giáo viên đang làm việc trong danh sách."] }]);
+      return;
+    }
+    const selectedStudents = kind === "classes" ? (values.studentIds as string[] ?? []) : [];
+    const existingStudents = kind === "classes" ? (record as SchoolClass | undefined)?.studentIds ?? [] : [];
+    if (kind === "classes" && selectedStudents.some(id => !classStudents.some(s =>
+      s.id === id && (s.status === "ACTIVE" || existingStudents.includes(id))))) {
+      form.setFields([{ name: "studentIds", errors: ["Vui lòng chọn học sinh đang học trong danh sách."] }]);
+      return;
+    }
     if (kind === "sessions") {
       const session = entity as unknown as Session;
       const cls = db.classes.find((c) => c.id === session.classId);
@@ -96,14 +118,34 @@ export function RecordEditor({
     if (kind === "leaves") Object.assign(entity, { status: "Chờ duyệt" });
     if (
       run(
-        (data) =>
-          mockService.save(data, role, kind, entity as unknown as Entity),
+        (data) => {
+          // Class records still use local storage; retain selected API profiles for validation and labels.
+          const teacher = selectedTeacher && {
+            specialty: "", certificate: "", status: "Đang làm việc" as const, salary: 0,
+            ...data.staff.find(t => t.id === selectedTeacher.id),
+            id: selectedTeacher.id, name: selectedTeacher.fullName,
+          };
+          const students = classStudents.filter(s => selectedStudents.includes(s.id)).map((s): Student => ({
+            teacherId: "", parentId: "",
+            ...data.students.find(row => row.id === s.id),
+            id: s.id, code: s.code, name: s.fullName, birthDate: s.birthDate, joined: s.admittedOn,
+            status: s.status === "ACTIVE" ? "Đang học" : s.status === "PAUSED" ? "Tạm nghỉ" : "Ngừng học",
+            note: s.notes ?? "",
+          }));
+          const source = teacher ? {
+            ...data, staff: [...data.staff.filter(t => t.id !== teacher.id), teacher],
+            students: [...data.students.filter(s => !selectedStudents.includes(s.id)), ...students],
+          } : data;
+          return mockService.save(source, role, kind, entity as unknown as Entity);
+        },
         record ? "Đã cập nhật " + labels[kind] : "Đã thêm " + labels[kind],
       )
     )
       onClose();
   }
-  const teacherOptions = db.staff.map((s) => ({ value: s.id, label: s.name }));
+  const teacherOptions = kind === "classes"
+    ? classTeachers.map(t => ({ value: t.id, label: `${t.code} · ${t.fullName}` }))
+    : db.staff.map((s) => ({ value: s.id, label: s.name }));
   return (
     <Modal
       open
@@ -222,16 +264,21 @@ export function RecordEditor({
               </Form.Item>
             </div>
             <Form.Item name="teacherId" label="Giáo viên phụ trách" rules={req}>
-              <Select options={teacherOptions} />
+              <Select showSearch optionFilterProp="label" loading={teachersLoading}
+                placeholder="Chọn giáo viên phụ trách" options={teacherOptions}
+                notFoundContent={teachersLoading ? "Đang tải giáo viên…" : "Chưa có giáo viên đang làm việc"} />
             </Form.Item>
             <Form.Item name="studentIds" label="Học sinh tham gia">
               <Select
                 mode="multiple"
                 showSearch
                 optionFilterProp="label"
-                options={db.students.map((s) => ({
+                loading={studentsLoading}
+                placeholder="Chọn học sinh tham gia"
+                notFoundContent={studentsLoading ? "Đang tải học sinh…" : "Chưa có học sinh đang học"}
+                options={classStudents.filter(s => s.status === "ACTIVE" || (record as SchoolClass | undefined)?.studentIds.includes(s.id)).map((s) => ({
                   value: s.id,
-                  label: s.name,
+                  label: `${s.code} · ${s.fullName}`,
                 }))}
               />
             </Form.Item>

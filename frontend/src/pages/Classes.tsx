@@ -1,7 +1,7 @@
 import { useConfirm } from "../hooks/useConfirm";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Button, Input, Select, Modal, Empty } from "antd";
+import { Alert, Button, Input, Select, Modal, Empty } from "antd";
 import {
   Plus,
   Search,
@@ -16,6 +16,8 @@ import { Badge, Avatar } from "../components/ui";
 import type { SchoolClass } from "../types";
 import { mockService } from "../services/mockService";
 import { normalize } from "../utils/format";
+import { individualAssignmentApi, type AssignmentTeacher } from "../services/individualAssignmentApi";
+import { studentProfileApi, type StudentProfile } from "../services/studentProfileApi";
 export function Classes() {
   const modal = useConfirm();
   const { db, view, role, run } = useDemo(),
@@ -25,6 +27,35 @@ export function Classes() {
     [status, setStatus] = useState("all"),
     [editor, setEditor] = useState<SchoolClass | null | undefined>(),
     [detail, setDetail] = useState<SchoolClass>();
+  const [teachers, setTeachers] = useState<AssignmentTeacher[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
+  const [teachersError, setTeachersError] = useState("");
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsError, setStudentsError] = useState("");
+  useEffect(() => {
+    if (role !== "ADMIN") return;
+    let cancelled = false;
+    setStudentsLoading(true);
+    studentProfileApi.list().then(rows => {
+      if (!cancelled) { setStudents(rows); setStudentsError(""); }
+    }).catch(cause => {
+      if (!cancelled) setStudentsError((cause as Error).message);
+    }).finally(() => { if (!cancelled) setStudentsLoading(false); });
+    return () => { cancelled = true; };
+  }, [role, editor]);
+  useEffect(() => {
+    if (role !== "ADMIN") return;
+    let cancelled = false;
+    setTeachersLoading(true);
+    individualAssignmentApi.teachers().then(rows => {
+      if (!cancelled) { setTeachers(rows); setTeachersError(""); }
+    }).catch(cause => {
+      if (!cancelled) setTeachersError((cause as Error).message);
+    }).finally(() => { if (!cancelled) setTeachersLoading(false); });
+    return () => { cancelled = true; };
+  }, [role, editor]);
+  const teacherName = (id?: string) => teachers.find(t => t.id === id)?.fullName ?? db.staff.find(t => t.id === id)?.name;
   const type = loc.pathname.startsWith("/individual")
     ? "Cá nhân"
     : loc.pathname.startsWith("/groups")
@@ -60,6 +91,8 @@ export function Classes() {
           </Button>
         )}
       </div>
+      {teachersError && <Alert type="error" showIcon message={teachersError} />}
+      {studentsError && <Alert type="error" showIcon message={studentsError} />}
       <section className="panel">
         <div className="table-toolbar">
           <Input
@@ -95,12 +128,12 @@ export function Classes() {
               <h2>{c.name}</h2>
               <div className="class-teacher">
                 <Avatar
-                  name={db.staff.find((s) => s.id === c.teacherId)?.name ?? "?"}
+                  name={teacherName(c.teacherId) ?? "?"}
                   index={i}
                 />
                 <span>
                   <small>Giáo viên phụ trách</small>
-                  {db.staff.find((s) => s.id === c.teacherId)?.name}
+                  {teacherName(c.teacherId)}
                 </span>
               </div>
               <div className="class-capacity">
@@ -158,6 +191,10 @@ export function Classes() {
           kind="classes"
           record={editor ?? undefined}
           initialType={type}
+          classTeachers={teachers}
+          teachersLoading={teachersLoading}
+          classStudents={students}
+          studentsLoading={studentsLoading}
           onClose={() => setEditor(undefined)}
         />
       )}
@@ -176,14 +213,14 @@ export function Classes() {
       >
         <p>
           {detail?.type} · Giáo viên:{" "}
-          {db.staff.find((s) => s.id === detail?.teacherId)?.name}
+          {teacherName(detail?.teacherId)}
         </p>
         <h3>Học sinh tham gia</h3>
         <div className="detail-list">
           {detail?.studentIds.map((id) => (
             <div key={id}>
-              <span>{db.students.find((s) => s.id === id)?.name}</span>
-              <small>{id}</small>
+              <span>{students.find(s => s.id === id)?.fullName ?? db.students.find(s => s.id === id)?.name}</span>
+              <small>{students.find(s => s.id === id)?.code ?? db.students.find(s => s.id === id)?.code ?? "—"}</small>
             </div>
           ))}
         </div>

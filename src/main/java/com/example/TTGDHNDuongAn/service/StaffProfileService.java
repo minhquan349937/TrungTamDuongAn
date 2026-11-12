@@ -10,33 +10,39 @@ import java.util.List;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class StaffProfileService {
-    public record Input(String fullName, String position, String specialty, String phone,
+    public record Input(String fullName, String accountRole, String specialty, String phone,
                         String email, LocalDate joinedOn, String status) {}
     public record Profile(String id, String code, String fullName, String position, String specialty,
-                          String phone, String email, LocalDate joinedOn, String status) {}
+                          String phone, String email, LocalDate joinedOn, String status, String accountRole) {}
 
     private final JdbcTemplate jdbc;
-    public StaffProfileService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final PasswordEncoder passwordEncoder;
+    public StaffProfileService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
+        this.jdbc = jdbc;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     private Profile map(ResultSet rs, int row) throws SQLException {
         return new Profile(rs.getString("id"), rs.getString("code"), rs.getString("full_name"),
             rs.getString("position"), rs.getString("specialty"), rs.getString("phone"),
-            rs.getString("email"), rs.getDate("joined_on").toLocalDate(), rs.getString("status"));
+            rs.getString("email"), rs.getDate("joined_on").toLocalDate(), rs.getString("status"), rs.getString("account_role"));
     }
 
     public List<Profile> list() {
-        return jdbc.query("SELECT id,code,full_name,position,specialty,phone,email,joined_on,status " +
+        return jdbc.query("SELECT id,code,full_name,position,specialty,phone,email,joined_on,status,account_role " +
             "FROM staff ORDER BY created_at DESC,code", this::map);
     }
 
     private Profile get(String id) {
-        return jdbc.query("SELECT id,code,full_name,position,specialty,phone,email,joined_on,status " +
+        return jdbc.query("SELECT id,code,full_name,position,specialty,phone,email,joined_on,status,account_role " +
             "FROM staff WHERE id=?", this::map, id).stream().findFirst()
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy hồ sơ nhân viên."));
     }
@@ -46,7 +52,12 @@ public class StaffProfileService {
             input.joinedOn().isAfter(LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))) ||
             input.status() == null || !List.of("ACTIVE", "ON_LEAVE", "TERMINATED").contains(input.status()))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Thông tin nhân viên không hợp lệ.");
-        if (input.fullName().trim().length() > 150 || length(input.position()) > 150 ||
+        if (input.accountRole() == null || !List.of("ADMIN", "TEACHER").contains(input.accountRole()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chức vụ phải là Quản trị viên hoặc Giáo viên.");
+        if (input.email() == null || input.email().isBlank() ||
+            !input.email().trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Vui lòng nhập email đăng nhập hợp lệ.");
+        if (input.fullName().trim().length() > 150 ||
             length(input.specialty()) > 150 || length(input.phone()) > 30 || length(input.email()) > 254)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Thông tin nhân viên vượt quá độ dài cho phép.");
     }
@@ -54,9 +65,32 @@ public class StaffProfileService {
     private int length(String value) { return value == null ? 0 : value.trim().length(); }
     private String optional(String value) { return value == null || value.isBlank() ? null : value.trim(); }
 
+    private String email(Input input) { return input.email().trim().toLowerCase(Locale.ROOT); }
+    private String position(Input input) { return "ADMIN".equals(input.accountRole()) ? "Quản trị viên" : "Giáo viên"; }
+
+    private void requireAvailableEmail(Input input, String userId) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM app_user WHERE email=? AND (? IS NULL OR id<>?)",
+            Integer.class, email(input), userId, userId);
+        if (count != null && count > 0) throw duplicateEmail();
+    }
+
+    private ResponseStatusException duplicateEmail() {
+        return new ResponseStatusException(HttpStatus.CONFLICT,"Email đăng nhập đã được sử dụng bởi tài khoản khác.");
+    }
+
+    private String createAccount(Input input) {
+        String userId = ShortIds.next(jdbc, "app_user");
+        try {
+            jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES(?,?,?,?,?,'ACTIVE')",
+                userId, email(input), passwordEncoder.encode("123456"), input.fullName().trim(), input.accountRole());
+        } catch (DuplicateKeyException ex) { throw duplicateEmail(); }
+        return userId;
+    }
+
     @Transactional
     public Profile create(Input input) {
         validate(input);
+        requireAvailableEmail(input, null);
         Long next = jdbc.queryForObject("SELECT next_value FROM profile_code_sequences WHERE entity_name='staff' FOR UPDATE", Long.class);
         if (next == null) throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,"Chưa khởi tạo mã nhân viên.");
         Long maximum = jdbc.queryForObject("SELECT COALESCE(MAX(CAST(SUBSTRING(code,3) AS UNSIGNED)),0) " +
@@ -65,20 +99,33 @@ public class StaffProfileService {
         if (number > 999999999L) throw new ResponseStatusException(HttpStatus.CONFLICT,"Đã hết dải mã nhân viên.");
         jdbc.update("UPDATE profile_code_sequences SET next_value=? WHERE entity_name='staff'", number + 1);
         String id = ShortIds.next(jdbc, "staff");
-        jdbc.update("INSERT INTO staff(id,code,full_name,position,specialty,phone,email,joined_on,status) " +
-            "VALUES(?,?,?,?,?,?,?,?,?)", id, "NV" + String.format(Locale.ROOT,"%03d",number),
-            input.fullName().trim(), optional(input.position()), optional(input.specialty()),
-            optional(input.phone()), optional(input.email()), Date.valueOf(input.joinedOn()), input.status());
+        String userId = createAccount(input);
+        jdbc.update("INSERT INTO staff(id,code,user_id,account_role,full_name,position,specialty,phone,email,joined_on,status) " +
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?)", id, "NV" + String.format(Locale.ROOT,"%03d",number), userId, input.accountRole(),
+            input.fullName().trim(), position(input), optional(input.specialty()),
+            optional(input.phone()), email(input), Date.valueOf(input.joinedOn()), input.status());
         return get(id);
     }
 
     @Transactional
     public Profile update(String id, Input input) {
         validate(input);
-        get(id);
-        jdbc.update("UPDATE staff SET full_name=?,position=?,specialty=?,phone=?,email=?,joined_on=?,status=? WHERE id=?",
-            input.fullName().trim(), optional(input.position()), optional(input.specialty()),
-            optional(input.phone()), optional(input.email()), Date.valueOf(input.joinedOn()), input.status(), id);
+        var links = jdbc.query("SELECT user_id FROM staff WHERE id=? FOR UPDATE", (rs, n) -> rs.getString("user_id"), id);
+        if (links.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Không tìm thấy hồ sơ nhân viên.");
+        String userId = links.getFirst();
+        requireAvailableEmail(input, userId);
+        if (userId == null) userId = createAccount(input);
+        else {
+            // Release the composite FK while changing the referenced account role in this transaction.
+            jdbc.update("UPDATE staff SET user_id=NULL WHERE id=?", id);
+            try {
+                jdbc.update("UPDATE app_user SET email=?,display_name=?,role=? WHERE id=?",
+                    email(input), input.fullName().trim(), input.accountRole(), userId);
+            } catch (DuplicateKeyException ex) { throw duplicateEmail(); }
+        }
+        jdbc.update("UPDATE staff SET full_name=?,position=?,specialty=?,phone=?,email=?,joined_on=?,status=?,user_id=?,account_role=? WHERE id=?",
+            input.fullName().trim(), position(input), optional(input.specialty()),
+            optional(input.phone()), email(input), Date.valueOf(input.joinedOn()), input.status(), userId, input.accountRole(), id);
         return get(id);
     }
 }

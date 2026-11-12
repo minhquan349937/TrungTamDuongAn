@@ -3,13 +3,14 @@ export type StaffProfile = {
   code: string;
   fullName: string;
   position: string | null;
+  accountRole: "ADMIN" | "TEACHER";
   specialty: string | null;
   phone: string | null;
   email: string | null;
   joinedOn: string;
   status: "ACTIVE" | "ON_LEAVE" | "TERMINATED";
 };
-export type StaffInput = Omit<StaffProfile, "id" | "code">;
+export type StaffInput = Omit<StaffProfile, "id" | "code" | "position">;
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   let token = "";

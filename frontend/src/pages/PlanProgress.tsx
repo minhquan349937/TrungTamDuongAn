@@ -81,7 +81,7 @@ export function PlanProgress({ plan, goals, onSaved, mode = "manage" }: { plan: 
         if (!goal) return;
         const input: EvaluationInput = { achievementPercent: percent, restartDecision: restart, evaluationNotes: notes.trim() || null };
         const rows = editingId ? await goalEvaluationApi.update(plan.id, goal.id, editingId, input) : await goalEvaluationApi.create(plan.id, goal.id, input);
-        setRecords(rows); newAttempt(); onSaved();
+        setRecords(rows); newAttempt(); setGoal(null); onSaved();
       })}>{editingId ? "Lưu thay đổi đánh giá" : "Lưu đánh giá"}</Button>{" "}
       <Button disabled={busy} onClick={newAttempt}>Đánh giá lại</Button></div>
       <section className="ip-evaluation-history">

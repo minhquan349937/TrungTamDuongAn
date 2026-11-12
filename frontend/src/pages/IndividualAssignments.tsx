@@ -33,7 +33,7 @@ export function IndividualAssignments() {
   }, [editor, form]);
   return <>
     <div className="page-heading"><div><div className="eyebrow">QUẢN LÝ LỚP CÁ NHÂN</div>
-      <h1>Phân công giáo viên</h1><p>Giáo viên được phân công có thể xem kế hoạch và đánh giá mục tiêu của học sinh.</p>
+      <h1>Phân công giáo viên</h1><p>Giáo viên được phân công có tài khoản đăng nhập hoạt động có thể xem kế hoạch và đánh giá mục tiêu của học sinh.</p>
     </div><Button type="primary" icon={<Plus size={16} />} onClick={() => setEditor(null)}>Thêm phân công</Button></div>
     {error && <Alert type="error" showIcon message={error} action={<Button onClick={() => void reload()}>Thử lại</Button>} />}
     <section className="panel" style={{ padding: 24 }}>
@@ -62,7 +62,7 @@ export function IndividualAssignments() {
         <Form.Item name="teacherId" label="Giáo viên phụ trách" rules={[{ required: true, message: "Chọn giáo viên." }]}>
           <Select aria-label="Giáo viên phụ trách" showSearch optionFilterProp="label" options={teachers.map(t => ({ value: t.id, label: `${t.code} · ${t.fullName}` }))} />
         </Form.Item>
-        {!teachers.length && <Alert type="warning" showIcon message="Chưa có nhân viên đang làm việc được liên kết với tài khoản giáo viên hoạt động." />}
+        {!teachers.length && <Alert type="warning" showIcon message="Chưa có giáo viên phù hợp. Hồ sơ nhân viên cần có vai trò Giáo viên và trạng thái Đang làm việc." />}
       </Form>
     </Modal>
   </>;

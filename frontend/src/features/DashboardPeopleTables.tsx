@@ -12,6 +12,9 @@ const studentStatuses: Record<StudentProfile["status"], string> = {
 const staffStatuses: Record<StaffProfile["status"], string> = {
   ACTIVE: "Đang làm việc", ON_LEAVE: "Nghỉ phép", TERMINATED: "Ngừng làm việc",
 };
+const staffRoles: Record<StaffProfile["accountRole"], string> = {
+  ADMIN: "Quản trị viên", TEACHER: "Giáo viên",
+};
 const required = [{ required: true, message: "Vui lòng nhập thông tin này." }];
 
 export function DashboardStudentsTable() {
@@ -75,23 +78,23 @@ export function DashboardStaffTable({ onChanged, compact = true }: { onChanged?:
     if (editor === undefined) return;
     form.resetFields();
     if (editor) form.setFieldsValue({
-      fullName: editor.fullName, position: editor.position, specialty: editor.specialty,
+      fullName: editor.fullName, accountRole: editor.accountRole, specialty: editor.specialty,
       phone: editor.phone, email: editor.email, joinedOn: editor.joinedOn, status: editor.status,
     });
-    else form.setFieldsValue({ joinedOn: today(), status: "ACTIVE" });
+    else form.setFieldsValue({ joinedOn: today(), status: "ACTIVE", accountRole: "TEACHER" });
   }, [editor, form]);
 
   async function save(values: StaffInput) {
     setSaving(true);
     try {
       const input: StaffInput = {
-        fullName: values.fullName.trim(), position: values.position?.trim() || null,
+        fullName: values.fullName.trim(), accountRole: values.accountRole,
         specialty: values.specialty?.trim() || null, phone: values.phone?.trim() || null,
         email: values.email?.trim() || null, joinedOn: values.joinedOn, status: values.status,
       };
       if (editor) await staffProfileApi.update(editor.id, input);
       else await staffProfileApi.create(input);
-      message.success(editor ? "Đã cập nhật hồ sơ nhân viên" : "Đã tạo hồ sơ nhân viên");
+      message.success(editor ? "Đã cập nhật hồ sơ và tài khoản nhân viên" : "Đã tạo hồ sơ và tài khoản nhân viên");
       setEditor(undefined);
       await reload();
       onChanged?.();
@@ -110,7 +113,7 @@ export function DashboardStaffTable({ onChanged, compact = true }: { onChanged?:
       columns={[
         { label: "Nhân viên", render: (s, i) => <div className="person-cell"><Avatar name={s.fullName} index={i + 1} />
           <div><button className="name-link" onClick={() => setDetail(s)}>{s.fullName}</button><small>Mã: {s.code}</small></div></div> },
-        { label: "Chức vụ", render: (s) => s.position ?? "—" },
+        { label: "Chức vụ", render: (s) => staffRoles[s.accountRole] },
         { label: "Chuyên môn", render: (s) => s.specialty ?? "—" },
         { label: "Ngày vào làm", render: (s) => dateLabel(s.joinedOn) },
         { label: "Trạng thái", render: (s) => <Badge tone={s.status === "ACTIVE" ? "green" : "red"}>{staffStatuses[s.status]}</Badge> },
@@ -121,14 +124,15 @@ export function DashboardStaffTable({ onChanged, compact = true }: { onChanged?:
       onCancel={() => setEditor(undefined)} onOk={() => form.submit()} confirmLoading={saving}
       okText={editor ? "Lưu thay đổi" : "Tạo hồ sơ"} width={680} destroyOnClose>
       <Form form={form} layout="vertical" onFinish={save}>
+        {!editor && <Alert type="info" showIcon message="Tài khoản được tạo theo chức vụ đã chọn. Đăng nhập bằng email, mật khẩu mặc định: 123456." />}
         <h3>Thông tin nhân viên</h3>
         <div className="form-grid">
           <Form.Item name="fullName" label="Họ và tên" rules={[...required, { whitespace: true }]}><Input maxLength={150} /></Form.Item>
-          <Form.Item name="position" label="Chức vụ"><Input maxLength={150} /></Form.Item>
+          <Form.Item name="accountRole" label="Chức vụ" rules={required}><Select options={Object.entries(staffRoles).map(([value, label]) => ({ value, label }))} /></Form.Item>
           <Form.Item name="specialty" label="Chuyên môn"><Input maxLength={150} /></Form.Item>
           <Form.Item name="joinedOn" label="Ngày vào làm" rules={required}><Input type="date" max={today()} /></Form.Item>
           <Form.Item name="phone" label="Số điện thoại"><Input maxLength={30} type="tel" /></Form.Item>
-          <Form.Item name="email" label="Email" rules={[{ type: "email", message: "Email không hợp lệ." }]}><Input maxLength={254} /></Form.Item>
+          <Form.Item name="email" label="Email đăng nhập" rules={[...required, { type: "email", message: "Email không hợp lệ." }]}><Input maxLength={254} /></Form.Item>
           <Form.Item name="status" label="Trạng thái" rules={required}><Select options={Object.entries(staffStatuses).map(([value, label]) => ({ value, label }))} /></Form.Item>
         </div>
       </Form>
@@ -137,7 +141,7 @@ export function DashboardStaffTable({ onChanged, compact = true }: { onChanged?:
       {detail && <Descriptions column={1} items={[
         { key: "code", label: "Mã nhân viên", children: detail.code },
         { key: "name", label: "Họ tên", children: detail.fullName },
-        { key: "position", label: "Chức vụ", children: detail.position },
+        { key: "position", label: "Chức vụ", children: staffRoles[detail.accountRole] },
         { key: "specialty", label: "Chuyên môn", children: detail.specialty },
         { key: "phone", label: "Số điện thoại", children: detail.phone },
         { key: "email", label: "Email", children: detail.email },

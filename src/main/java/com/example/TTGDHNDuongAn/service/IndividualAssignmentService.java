@@ -19,10 +19,11 @@ public class IndividualAssignmentService {
     public record Create(String studentId,String teacherId) {}
     public record Change(String teacherId) {}
     private final JdbcTemplate jdbc;
+    private static final String ELIGIBLE_TEACHER = "t.status='ACTIVE' AND t.account_role='TEACHER'";
     public IndividualAssignmentService(JdbcTemplate jdbc) { this.jdbc=jdbc; }
     public List<Teacher> teachers() {
-        return jdbc.query("SELECT t.id,t.code,t.full_name FROM staff t JOIN app_user u ON u.id=t.user_id " +
-            "WHERE t.status='ACTIVE' AND u.status='ACTIVE' AND u.role='TEACHER' ORDER BY t.full_name,t.id",
+        return jdbc.query("SELECT t.id,t.code,t.full_name FROM staff t " +
+            "WHERE " + ELIGIBLE_TEACHER + " ORDER BY t.full_name,t.id",
             (rs,n)->new Teacher(rs.getString("id"),rs.getString("code"),rs.getString("full_name")));
     }
     public List<Assignment> list() {
@@ -64,8 +65,8 @@ public class IndividualAssignmentService {
         return list().stream().filter(a->a.id().equals(id)).findFirst().orElseThrow();
     }
     private void requireTeacher(String id) {
-        if(jdbc.queryForList("SELECT t.id FROM staff t JOIN app_user u ON u.id=t.user_id WHERE t.id=? AND t.status='ACTIVE' AND u.status='ACTIVE' AND u.role='TEACHER' FOR UPDATE",String.class,id).isEmpty())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chọn giáo viên đang làm việc có tài khoản giáo viên hoạt động.");
+        if(jdbc.queryForList("SELECT t.id FROM staff t WHERE t.id=? AND " + ELIGIBLE_TEACHER + " FOR UPDATE",String.class,id).isEmpty())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Chọn nhân viên đang làm việc có vai trò TEACHER.");
     }
     private void validateId(String id) {
         try { if(!ShortIds.isId(id)) throw new IllegalArgumentException(); } catch(IllegalArgumentException|NullPointerException ex) { throw invalid(); }

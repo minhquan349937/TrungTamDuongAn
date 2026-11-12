@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { planEvaluationApi, type PlanEvaluation } from "../services/planEvaluationApi";
 import type { Plan } from "../services/goalBankApi";
 import { PlanLifecycleActions } from "./PlanLifecycleActions";
+import { PlanAiSummary } from "./PlanAiSummary";
 import "./intervention-workflow.css";
 
 const dateLabel = (date: string) => new Date(`${date}Z`).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
@@ -16,6 +17,7 @@ export function PlanMonthlyEvaluations({ plan, studentName, onPlanChanged }: { p
   const [editing, setEditing] = useState<PlanEvaluation | "new" | null>(null);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [copyNotice, setCopyNotice] = useState("");
@@ -65,7 +67,7 @@ export function PlanMonthlyEvaluations({ plan, studentName, onPlanChanged }: { p
       {latest && <Button disabled={loading || busy} onClick={() => open("new")}>Tạo đánh giá mới</Button>}
     </div>
     <PlanLifecycleActions plan={plan} hasEvaluation={rows.length > 0} disabled={loading || busy} onSaved={onPlanChanged} />
-    <Modal className="ip-plan-assessment-modal" width={760} title={editing === "new" ? "Đánh giá kế hoạch" : "Chỉnh sửa đánh giá kế hoạch"} open={!!editing} onCancel={() => { if (!busy) { setEditing(null); setError(""); } }} onOk={() => void save()} okText="Lưu đánh giá kế hoạch" confirmLoading={busy} okButtonProps={{ disabled: !notes.trim() || busy, "aria-label": "Lưu đánh giá kế hoạch" }}>
+    <Modal className="ip-plan-assessment-modal" width={760} title={editing === "new" ? "Đánh giá kế hoạch" : "Chỉnh sửa đánh giá kế hoạch"} open={!!editing} onCancel={() => { if (!busy && !aiBusy) { setEditing(null); setError(""); } }} onOk={() => void save()} okText="Lưu đánh giá kế hoạch" confirmLoading={busy} okButtonProps={{ disabled: !notes.trim() || busy || aiBusy, "aria-label": "Lưu đánh giá kế hoạch" }}>
       {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
       {copyNotice && <Alert type="info" showIcon message={copyNotice} style={{ marginBottom: 20 }} />}
       <div className="ip-plan-assessment-fields">
@@ -75,6 +77,7 @@ export function PlanMonthlyEvaluations({ plan, studentName, onPlanChanged }: { p
         <label>Ngày đánh giá gần nhất<Input aria-label="Ngày đánh giá gần nhất" value={latest ? dateLabel(latest.updatedAt) : "Chưa có đánh giá trước đó"} readOnly /></label>
         <label className="ip-plan-assessment-author">Tên người đánh giá<Input aria-label="Tên người đánh giá" value={editing && editing !== "new" ? editing.evaluatedByName : user?.displayName ?? ""} readOnly /></label>
       </div>
+      {editing && <PlanAiSummary key={`${planId}-${typeof editing === "string" ? editing : editing.id}`} planId={planId} notes={notes} onUse={setNotes} disabled={busy} onBusy={setAiBusy} />}
       <label className="ip-monthly-editor">Nhận xét giáo viên<Input.TextArea aria-label="Nhận xét giáo viên về kế hoạch" rows={8} value={notes} onChange={e => setNotes(e.target.value)} maxLength={16000} showCount placeholder="Ghi lại tiến bộ, khó khăn và hướng đồng hành trong tháng…" /></label>
     </Modal>
   </section>;

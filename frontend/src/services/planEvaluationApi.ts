@@ -16,6 +16,8 @@ export type PlanEvaluation = {
 };
 
 export const planEvaluationApi = {
+  aiSummary: (planId: string, keywords: string) =>
+    goalRequest<{ generatedText: string }>(`/api/learning-plans/${planId}/ai-summary`, { keywords }),
   list: (planId: string) => goalRequest<PlanEvaluation[]>(`/api/learning-plans/${planId}/evaluations`),
   get: (id: string) => goalRequest<PlanEvaluation>(`/api/plan-evaluations/${id}`),
   create: (planId: string, evaluationNotes: string) =>

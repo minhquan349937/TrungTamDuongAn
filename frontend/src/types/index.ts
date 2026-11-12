@@ -2,6 +2,7 @@ export type Role = "ADMIN" | "TEACHER" | "PARENT";
 export type StudyType = "Cá nhân" | "Lớp nhóm" | "Bán trú";
 export interface Student {
   id: string;
+  code?: string;
   name: string;
   birthDate: string;
   status: "Đang học" | "Tạm nghỉ" | "Ngừng học";
