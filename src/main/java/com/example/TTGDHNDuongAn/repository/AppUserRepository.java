@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 import com.example.TTGDHNDuongAn.model.AppUser;
+import com.example.TTGDHNDuongAn.service.LoginIdentifiers;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -17,13 +18,18 @@ public class AppUserRepository {
     }
 
     public Optional<AppUser> findActiveByEmail(String email) {
+        return findActiveByLogin(email);
+    }
+
+    public Optional<AppUser> findActiveByLogin(String login) {
+        String normalized=LoginIdentifiers.login(login);
         List<AppUser> users = jdbcTemplate.query(
-                "SELECT id, email, display_name, role, password_hash, status " +
-                        "FROM app_user WHERE email = ? AND status = 'ACTIVE'",
+                "SELECT id, email, display_name, role, password_hash, status, phone " +
+                        "FROM app_user WHERE "+(normalized.contains("@")?"email":"phone")+" = ? AND status = 'ACTIVE'",
                 (rs, rowNum) -> new AppUser(
                         rs.getString("id"), rs.getString("email"), rs.getString("display_name"),
-                        rs.getString("role"), rs.getString("password_hash"), rs.getString("status")),
-                normalizeEmail(email));
+                        rs.getString("role"), rs.getString("password_hash"), rs.getString("status"),rs.getString("phone")),
+                normalized);
         return users.stream().findFirst();
     }
 

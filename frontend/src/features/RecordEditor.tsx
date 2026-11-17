@@ -1,5 +1,5 @@
-import { Form, Input, InputNumber, Modal, Select } from "antd";
-import { useEffect } from "react";
+import { App, Form, Input, InputNumber, Modal, Select } from "antd";
+import { useEffect, useState } from "react";
 import { useDemo } from "../hooks/useDemo";
 import { mockService } from "../services/mockService";
 import type { AssignmentTeacher } from "../services/individualAssignmentApi";
@@ -23,6 +23,7 @@ export function RecordEditor({
   teachersLoading = false,
   classStudents = [],
   studentsLoading = false,
+  onSaveClass,
 }: {
   kind: Collection;
   record?: Entity;
@@ -32,8 +33,11 @@ export function RecordEditor({
   teachersLoading?: boolean;
   classStudents?: StudentProfile[];
   studentsLoading?: boolean;
+  onSaveClass?: (record: SchoolClass) => Promise<void>;
 }) {
   const { db, role, run } = useDemo();
+  const { message } = App.useApp();
+  const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
   useEffect(() => {
     form.setFieldsValue(
@@ -66,7 +70,7 @@ export function RecordEditor({
     );
   }, [record, form, kind, db, role, initialType]);
   const req = [{ required: true, message: "Vui lòng nhập thông tin này." }];
-  function save(values: Record<string, unknown>) {
+  async function save(values: Record<string, unknown>) {
     const staffCodeKey = "duongan.staff-code-seq.v1";
     const nextStaffCode = () => {
       const maxExisting = db.staff.reduce((max, staff) => {
@@ -102,6 +106,13 @@ export function RecordEditor({
     if (kind === "classes" && selectedStudents.some(id => !classStudents.some(s =>
       s.id === id && (s.status === "ACTIVE" || existingStudents.includes(id))))) {
       form.setFields([{ name: "studentIds", errors: ["Vui lòng chọn học sinh đang học trong danh sách."] }]);
+      return;
+    }
+    if (kind === "classes" && onSaveClass) {
+      setSaving(true);
+      try { await onSaveClass(entity as unknown as SchoolClass); onClose(); }
+      catch (error) { message.error((error as Error).message); }
+      finally { setSaving(false); }
       return;
     }
     if (kind === "sessions") {
@@ -150,7 +161,11 @@ export function RecordEditor({
     <Modal
       open
       title={(record ? "Chỉnh sửa " : "Thêm ") + labels[kind]}
-      onCancel={onClose}
+      onCancel={() => { if (!saving) onClose(); }}
+      confirmLoading={saving}
+      cancelButtonProps={{ disabled: saving }}
+      closable={!saving}
+      maskClosable={!saving}
       onOk={() => form.submit()}
       okText={record ? "Lưu thay đổi" : "Tạo mới"}
       cancelText="Hủy"
@@ -250,10 +265,11 @@ export function RecordEditor({
             <div className="form-grid">
               <Form.Item name="type" label="Hình thức" rules={req}>
                 <Select
+                  disabled={!!onSaveClass && !!record}
                   onChange={(v) =>
                     form.setFieldValue("capacity", v === "Cá nhân" ? 1 : 12)
                   }
-                  options={["Cá nhân", "Lớp nhóm", "Bán trú"].map((value) => ({
+                  options={(onSaveClass ? ["Lớp nhóm", "Bán trú"] : ["Cá nhân", "Lớp nhóm", "Bán trú"]).map((value) => ({
                     value,
                     label: value,
                   }))}

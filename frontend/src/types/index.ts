@@ -43,7 +43,8 @@ export interface Session {
   start: string;
   end: string;
   room: string;
-  attendance: Record<string, "Có mặt" | "Vắng" | "Có phép">;
+  studentIds?: string[];
+  attendance: Record<string, "Có mặt" | "Vắng" | "Có phép" | "Đi muộn">;
 }
 export interface Fee {
   id: string;

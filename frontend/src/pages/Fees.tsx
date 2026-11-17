@@ -1,31 +1,74 @@
 import { useConfirm } from "../hooks/useConfirm";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Button, Input, Select, Modal } from "antd";
+import { Alert, App, Button, Form, Input, InputNumber, Select, Modal, Spin } from "antd";
 import { Plus, Wallet, CheckCircle2, Clock, Receipt } from "lucide-react";
-import { useDemo } from "../hooks/useDemo";
+import { useAuth } from "../auth/AuthProvider";
 import { DataTable, StatCard, Badge } from "../components/ui";
-import { RecordEditor } from "../features/RecordEditor";
-import { mockService } from "../services/mockService";
-import { money, dateLabel, today } from "../utils/format";
-import type { Fee } from "../types";
+import { feeApi, type CreateFee, type FeeRecord, type FeeStudent } from "../services/feeApi";
+import { money, today } from "../utils/format";
 export function Fees() {
+  const paymentDate = (value: string) => new Date(`${value}Z`).toLocaleDateString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
   const modal = useConfirm();
-  const { db, view, role, run } = useDemo(),
-    loc = useLocation();
-  const [month, setMonth] = useState(today().slice(0, 7)),
+  const { user } = useAuth();
+  const role = user?.role;
+  const loc = useLocation();
+  const { message } = App.useApp();
+  const [form] = Form.useForm<CreateFee>();
+  const [rows, setRows] = useState<FeeRecord[]>([]);
+  const [students, setStudents] = useState<FeeStudent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const generation = useRef(0);
+  const load = useCallback(async () => {
+    const request = ++generation.current;
+    try {
+      const [fees, profiles] = await Promise.all([feeApi.list(), feeApi.students()]);
+      if (generation.current !== request) return;
+      setRows(fees); setStudents(profiles); setError("");
+    } catch (reason) {
+      if (generation.current === request) setError((reason as Error).message);
+    } finally { if (generation.current === request) setLoading(false); }
+  }, []);
+  useEffect(() => {
+    setRows([]); setStudents([]); setLoading(true);
+    void load();
+    const refresh = () => { if (document.visibilityState === "visible") void load(); };
+    const interval = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      generation.current++;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load, user?.id]);
+  const [month, setMonth] = useState(""),
     [student, setStudent] = useState("all"),
     [add, setAdd] = useState(false),
-    [receipt, setReceipt] = useState<Fee>();
+    [receipt, setReceipt] = useState<FeeRecord>();
   const history = loc.pathname === "/payments";
-  const fees = view.fees.filter(
+  const fees = rows.filter(
     (f) =>
       (!month || f.month === month) &&
       (student === "all" || f.studentId === student) &&
-      (!history || f.paidAt),
+      (!history || f.paidAmount > 0),
   );
-  const paid = fees.filter((f) => f.paidAt).reduce((s, f) => s + f.amount, 0),
-    unpaid = fees.filter((f) => !f.paidAt).reduce((s, f) => s + f.amount, 0);
+  const paid = fees.reduce((s, f) => s + f.paidAmount, 0),
+    unpaid = fees.reduce((s, f) => s + Math.max(0, f.outstandingAmount), 0);
+  const status = (fee: FeeRecord) => fee.outstandingAmount <= 0 ? "Đã thanh toán" : fee.paidAmount > 0 ? "Thanh toán một phần" : "Chưa thanh toán";
+  async function createFee(input: CreateFee) {
+    setSaving(true);
+    try {
+      await feeApi.create({ ...input, title: input.title.trim() });
+      setAdd(false); form.resetFields(); setMonth(""); setStudent("all");
+      message.success("Đã lưu khoản thu. Phụ huynh của học sinh có thể xem trong mục Học phí.");
+      await load();
+    } catch (reason) { message.error((reason as Error).message); }
+    finally { setSaving(false); }
+  }
   return (
     <>
       <div className="page-heading">
@@ -38,12 +81,14 @@ export function Fees() {
           <Button
             type="primary"
             icon={<Plus size={16} />}
-            onClick={() => setAdd(true)}
+            onClick={() => { form.resetFields(); form.setFieldsValue({ month: today().slice(0, 7) }); setAdd(true); }}
           >
             Tạo khoản thu
           </Button>
         )}
       </div>
+      {error && <Alert type="error" showIcon message={error} action={<Button onClick={() => void load()}>Thử lại</Button>} />}
+      {loading && <Spin tip="Đang tải học phí…"><div style={{ height: 48 }} /></Spin>}
       <div className="stats-grid three">
         <StatCard
           label="Tổng khoản thu"
@@ -57,13 +102,13 @@ export function Fees() {
           value={money(paid)}
           icon={<CheckCircle2 size={22} />}
           delta="Đã ghi nhận"
-          caption="trong dữ liệu demo"
+          caption="đã lưu trên hệ thống"
         />
         <StatCard
           label="Chưa thanh toán"
           value={money(unpaid)}
           icon={<Clock size={22} />}
-          delta={fees.filter((f) => !f.paidAt).length + " khoản"}
+          delta={fees.filter((f) => f.outstandingAmount > 0).length + " khoản"}
           caption="cần theo dõi"
         />
       </div>
@@ -85,7 +130,7 @@ export function Fees() {
             onChange={setStudent}
             options={[
               { value: "all", label: "Tất cả học sinh" },
-              ...view.students.map((s) => ({ value: s.id, label: s.name })),
+              ...students.map((s) => ({ value: s.id, label: s.fullName })),
             ]}
           />
         </label>
@@ -99,6 +144,7 @@ export function Fees() {
             Xem tất cả các tháng
           </Button>
         )}
+        <Button onClick={() => void load()}>Cập nhật</Button>
       </div>
       <DataTable
         title={history ? "Các khoản đã thanh toán" : "Danh sách học phí"}
@@ -106,17 +152,17 @@ export function Fees() {
         searchText={(f) =>
           f.title +
           " " +
-          db.students.find((s) => s.id === f.studentId)?.name +
+          f.studentName +
           " " +
           f.id
         }
-        statuses={["Đã thanh toán", "Chưa thanh toán"]}
-        statusOf={(f) => (f.paidAt ? "Đã thanh toán" : "Chưa thanh toán")}
+        statuses={["Đã thanh toán", "Thanh toán một phần", "Chưa thanh toán"]}
+        statusOf={status}
         columns={[
           {
             label: "Học sinh",
             render: (f) => (
-              <b>{db.students.find((s) => s.id === f.studentId)?.name}</b>
+              <b>{f.studentName}</b>
             ),
           },
           {
@@ -125,7 +171,7 @@ export function Fees() {
               <div>
                 {f.title}
                 <small className="block-muted">
-                  {f.id} · {f.month}
+                  {f.code} · {f.month}
                 </small>
               </div>
             ),
@@ -134,12 +180,13 @@ export function Fees() {
           {
             label: "Trạng thái",
             render: (f) => (
-              <Badge>{f.paidAt ? "Đã thanh toán" : "Chưa thanh toán"}</Badge>
+              <Badge>{status(f)}</Badge>
             ),
           },
+          { label: "Còn phải thu", render: (f) => money(Math.max(0, f.outstandingAmount)) },
           {
             label: "Ngày thanh toán",
-            render: (f) => (f.paidAt ? dateLabel(f.paidAt) : "—"),
+            render: (f) => (f.paidAt ? paymentDate(f.paidAt) : "—"),
           },
           {
             label: "Thao tác",
@@ -159,14 +206,16 @@ export function Fees() {
                   onClick={() =>
                     modal.confirm({
                       title: "Ghi nhận thanh toán?",
-                      content: f.title + " · " + money(f.amount),
+                      content: f.title + " · " + money(f.outstandingAmount),
                       okText: "Xác nhận đã thu",
                       cancelText: "Hủy",
-                      onOk: () =>
-                        run(
-                          (d) => mockService.pay(d, role, f.id),
-                          "Đã ghi nhận thanh toán học phí",
-                        ),
+                      onOk: async () => {
+                        try {
+                          await feeApi.pay(f.id);
+                          message.success("Đã ghi nhận thanh toán học phí");
+                          await load();
+                        } catch (reason) { message.error((reason as Error).message); throw reason; }
+                      },
                     })
                   }
                 >
@@ -178,22 +227,38 @@ export function Fees() {
           },
         ]}
       />
-      {add && <RecordEditor kind="fees" onClose={() => setAdd(false)} />}
+      <Modal open={add} title="Tạo khoản thu" onCancel={() => { if (!saving) setAdd(false); }}
+        footer={null} closable={!saving} maskClosable={!saving}>
+        <Form form={form} layout="vertical" onFinish={createFee}>
+          <Form.Item name="studentId" label="Học sinh" rules={[{ required: true, message: "Vui lòng chọn học sinh." }]}>
+            <Select showSearch optionFilterProp="label" options={students.map(s => ({ value: s.id, label: `${s.fullName} · ${s.code}` }))} />
+          </Form.Item>
+          <Form.Item name="title" label="Nội dung khoản thu" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập nội dung khoản thu." }]}>
+            <Input maxLength={250} />
+          </Form.Item>
+          <Form.Item name="month" label="Tháng học phí" rules={[{ required: true, message: "Vui lòng chọn tháng học phí." }]}><Input type="month" /></Form.Item>
+          <Form.Item name="amount" label="Số tiền (đồng)" rules={[{ required: true, message: "Vui lòng nhập số tiền." }, { type: "number", min: 1, max: 99999999999999 }]}>
+            <InputNumber min={1} max={99999999999999} precision={0} style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="dueOn" label="Hạn thanh toán"><Input type="date" min={today()} /></Form.Item>
+          <Button type="primary" htmlType="submit" loading={saving}>Lưu khoản thu</Button>
+        </Form>
+      </Modal>
       <Modal
         open={!!receipt}
-        title="Biên nhận thanh toán minh họa"
+        title="Thông tin thanh toán"
         onCancel={() => setReceipt(undefined)}
         footer={<Button onClick={() => setReceipt(undefined)}>Đóng</Button>}
       >
         {receipt && (
           <div className="receipt">
             <Receipt size={36} />
-            <h2>{money(receipt.amount)}</h2>
+            <h2>{money(receipt.paidAmount)}</h2>
             <Badge>Đã thanh toán</Badge>
-            <p>{db.students.find((s) => s.id === receipt.studentId)?.name}</p>
+            <p>{receipt.studentName}</p>
             <p>{receipt.title}</p>
-            <p>Ngày ghi nhận: {dateLabel(receipt.paidAt!)}</p>
-            <small>Biên nhận demo · Không có giá trị giao dịch</small>
+            <p>Ngày ghi nhận: {paymentDate(receipt.paidAt!)}</p>
+            <small>Mã khoản thu: {receipt.code}</small>
           </div>
         )}
       </Modal>

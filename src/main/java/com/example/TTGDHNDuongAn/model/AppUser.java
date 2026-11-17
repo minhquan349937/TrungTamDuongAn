@@ -6,5 +6,8 @@ public record AppUser(
         String displayName,
         String role,
         String passwordHash,
-        String status) {
+        String status, String phone) {
+    public AppUser(String id,String email,String displayName,String role,String passwordHash,String status) {
+        this(id,email,displayName,role,passwordHash,status,null);
+    }
 }

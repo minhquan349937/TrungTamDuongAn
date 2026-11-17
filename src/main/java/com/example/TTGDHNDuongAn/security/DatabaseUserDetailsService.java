@@ -1,7 +1,5 @@
 package com.example.TTGDHNDuongAn.security;
 
-import java.util.Locale;
-
 import com.example.TTGDHNDuongAn.model.AppUser;
 import com.example.TTGDHNDuongAn.repository.AppUserRepository;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,8 +16,10 @@ public class DatabaseUserDetailsService implements UserDetailsService {
 
     @Override
     public AppUserPrincipal loadUserByUsername(String email) throws UsernameNotFoundException {
-        AppUser user = userRepository.findActiveByEmail(email.trim().toLowerCase(Locale.ROOT))
+        AppUser user;
+        try { user = userRepository.findActiveByLogin(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Account not found"));
-        return new AppUserPrincipal(user.id(), user.email(), user.displayName(), user.role(), user.passwordHash());
+        } catch(org.springframework.web.server.ResponseStatusException ex) {throw new UsernameNotFoundException("Account not found");}
+        return new AppUserPrincipal(user.id(), user.email(), user.displayName(), user.role(), user.passwordHash(),user.phone());
     }
 }

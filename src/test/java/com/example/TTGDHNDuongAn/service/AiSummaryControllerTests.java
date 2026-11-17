@@ -8,6 +8,9 @@ import com.example.TTGDHNDuongAn.controller.AiSummaryController;
 import com.example.TTGDHNDuongAn.security.*;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -25,6 +28,10 @@ class AiSummaryControllerTests {
     @MockitoBean GeminiSummaryClient client;
     @MockitoBean AiSummaryQuota quota;
     @MockitoBean UserDetailsService users;
+    @MockitoBean JdbcTemplate jdbc;
+    @BeforeEach @SuppressWarnings("unchecked") void activeSession() {
+        when(jdbc.query(anyString(),any(RowMapper.class),eq("TK000001"))).thenReturn(List.of(true));
+    }
     AppUserPrincipal actor(String role) { return new AppUserPrincipal("TK000001","test@invalid.test","Test",role,"unused"); }
     final String url="/api/learning-plans/KH000001/ai-summary";
     @Test void teacherAndAdminCanGenerateWithoutPersisting() throws Exception {

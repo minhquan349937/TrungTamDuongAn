@@ -8,7 +8,6 @@ import {
   BookOpen,
   ArrowLeft,
   Bell,
-  ShieldCheck,
   Pencil,
 } from "lucide-react";
 import { useDemo } from "../hooks/useDemo";
@@ -18,7 +17,7 @@ import { RecordEditor } from "../features/RecordEditor";
 import { mockService } from "../services/mockService";
 import { today, dateLabel } from "../utils/format";
 import { titles } from "../routes/menu";
-import { studentProfileApi, type GuardianProfile, type GuardianUpdateInput, type StudentProfile } from "../services/studentProfileApi";
+import { studentProfileApi, type GuardianContactProfile, type GuardianUpdateInput, type StudentProfile } from "../services/studentProfileApi";
 export function LeavePage() {
   const modal = useConfirm();
   const { db, view, role, run } = useDemo(),
@@ -173,22 +172,26 @@ export function Parents() {
   const [form] = Form.useForm<GuardianUpdateInput>();
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [error, setError] = useState("");
-  const [editing, setEditing] = useState<GuardianProfile | null>(null);
+  const [editing, setEditing] = useState<GuardianContactProfile | "new" | null>(null);
+  const [guardianRows, setGuardianRows] = useState<GuardianContactProfile[]>([]);
   const [saving, setSaving] = useState(false);
   async function reload() {
     try {
-      setStudents(await studentProfileApi.list());
+      const [profiles, guardians] = await Promise.all([studentProfileApi.list(), studentProfileApi.guardians()]);
+      setStudents(profiles); setGuardianRows(guardians);
       setError("");
     } catch (err) { setError((err as Error).message); }
   }
   useEffect(() => {
     let active = true;
-    studentProfileApi.list().then((rows) => { if (active) setStudents(rows); })
+    Promise.all([studentProfileApi.list(), studentProfileApi.guardians()]).then(([rows, guardians]) => { if (active) { setStudents(rows); setGuardianRows(guardians); } })
       .catch((err: Error) => { if (active) setError(err.message); });
     return () => { active = false; };
   }, []);
   useEffect(() => {
     if (!editing) return;
+    form.resetFields();
+    if (editing === "new") return;
     form.setFieldsValue({ fullName: editing.fullName, phone: editing.phone,
       email: editing.email, address: editing.address });
   }, [editing, form]);
@@ -196,25 +199,28 @@ export function Parents() {
     if (!editing) return;
     setSaving(true);
     try {
-      await studentProfileApi.updateGuardian(editing.id, {
+      const input = {
         fullName: values.fullName.trim(), phone: values.phone.trim(),
         email: values.email?.trim() || null, address: values.address?.trim() || null,
-      });
+      };
+      if (editing === "new") await studentProfileApi.createGuardian(input);
+      else await studentProfileApi.updateGuardian(editing.id, input);
       await reload();
       setEditing(null);
-      message.success("Đã cập nhật hồ sơ phụ huynh");
+      message.success(editing === "new" ? "Đã lưu phụ huynh và tài khoản đăng nhập." : "Đã cập nhật hồ sơ và thông tin đăng nhập phụ huynh.");
     } catch (err) { message.error((err as Error).message); }
     finally { setSaving(false); }
   }
-  const parents = [...new Map(students.filter((s) => s.guardian).map((s) => [s.guardian!.id, s.guardian!])).values()];
+  const parents = guardianRows;
   return (
     <>
       <div className="page-heading">
         <div>
           <div className="eyebrow">QUẢN LÝ HỒ SƠ</div>
           <h1>Hồ sơ phụ huynh</h1>
-          <p>Phụ huynh chính đã được nhập cùng hồ sơ học sinh.</p>
+          <p>Quản lý phụ huynh và tài khoản đăng nhập bằng số điện thoại.</p>
         </div>
+        <Button type="primary" icon={<Plus size={16} />} onClick={() => setEditing("new")}>Thêm phụ huynh</Button>
       </div>
       {error && <div className="info-note">{error}</div>}
       <DataTable
@@ -250,9 +256,10 @@ export function Parents() {
           },
         ]}
       />
-      <Modal open={!!editing} title="Sửa hồ sơ phụ huynh" onCancel={() => setEditing(null)}
+      <Modal open={!!editing} title={editing === "new" ? "Thêm phụ huynh" : "Sửa hồ sơ phụ huynh"} onCancel={() => setEditing(null)}
         onOk={() => form.submit()} okText="Lưu thay đổi" confirmLoading={saving} destroyOnClose>
         <Form form={form} layout="vertical" onFinish={saveGuardian}>
+          {editing === "new" && <p>Tài khoản phụ huynh được tạo bằng số điện thoại, mật khẩu ban đầu: 123456. Email không bắt buộc.</p>}
           <Form.Item name="fullName" label="Họ và tên" rules={[{ required: true, whitespace: true, message: "Vui lòng nhập họ tên." }]}>
             <Input maxLength={150} />
           </Form.Item>
@@ -265,48 +272,6 @@ export function Parents() {
           <Form.Item name="address" label="Địa chỉ"><Input.TextArea rows={2} /></Form.Item>
         </Form>
       </Modal>
-    </>
-  );
-}
-export function Accounts() {
-  const { db } = useDemo();
-  const rows = [
-    ...db.admins.map((a) => ({ ...a, role: "Quản trị viên" })),
-    ...db.staff.map((s) => ({
-      ...s,
-      email: s.id.toLowerCase() + "@example.invalid",
-      role: "Giáo viên",
-    })),
-    ...db.parents.map((p) => ({ ...p, role: "Phụ huynh" })),
-  ];
-  return (
-    <>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">QUẢN LÝ HỆ THỐNG</div>
-          <h1>Tài khoản & phân quyền</h1>
-          <p>
-            Chuyển vai trò tại góc trên bên phải để trải nghiệm quyền truy cập.
-          </p>
-        </div>
-      </div>
-      <div className="info-note mb-4">
-        <ShieldCheck size={18} /> Quyền demo được kiểm tra tại lớp dịch vụ và
-        đường dẫn. Quản lý tài khoản thực sẽ phát triển ở giai đoạn 2.
-      </div>
-      <DataTable
-        title="Tài khoản minh họa"
-        rows={rows}
-        searchText={(r) => r.name + " " + r.email}
-        statusOf={(r) => r.role}
-        statuses={["Quản trị viên", "Giáo viên", "Phụ huynh"]}
-        columns={[
-          { label: "Họ tên", render: (r) => <b>{r.name}</b> },
-          { label: "Mã tài khoản", render: (r) => r.id },
-          { label: "Email", render: (r) => r.email },
-          { label: "Vai trò", render: (r) => <Badge>{r.role}</Badge> },
-        ]}
-      />
     </>
   );
 }

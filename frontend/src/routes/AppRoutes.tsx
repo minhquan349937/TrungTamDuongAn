@@ -13,19 +13,20 @@ import {
   WorkPage,
   Notifications,
   Parents,
-  Accounts,
   PhaseTwo,
 } from "../pages/Supporting";
 import { useDemo } from "../hooks/useDemo";
 import { canVisit } from "../services/authorization";
 import { RealInterventionPlans } from "../pages/RealInterventionPlans";
 import { IndividualAssignments } from "../pages/IndividualAssignments";
+import { IndividualReports } from "../pages/IndividualReports";
 import { ParentPlanReports } from "../pages/PlanMonthlyEvaluations";
 import { GoalCatalogManager } from "../pages/GoalCatalogManager";
 import { LoginPage } from "../pages/LoginPage";
 import { PublicWebsitePage, WebsitePreviewPage } from "../pages/PublicWebsite";
 import { WebsiteManager } from "../pages/WebsiteManager";
 import { useAuth } from "../auth/AuthProvider";
+import { Accounts } from "../pages/Accounts";
 function Content() {
   const { role } = useDemo(),
     { pathname } = useLocation();
@@ -40,6 +41,7 @@ function Content() {
     );
   if (pathname === "/dashboard") return <Dashboard />;
   if (pathname === "/reports") return <ParentPlanReports />;
+  if (pathname === "/individual/report" || pathname.startsWith("/individual/report/")) return <IndividualReports key={pathname} />;
   if (pathname === "/transfers") return <Navigate to="/students" replace />;
   if (pathname === "/library") return <GoalCatalogManager />;
   if (pathname === "/website") return <WebsiteManager />;
@@ -54,8 +56,8 @@ function Content() {
         <div className="page-heading">
           <div>
             <div className="eyebrow">QUẢN LÝ HỒ SƠ</div>
-            <h1>{role === "PARENT" ? "Hồ sơ của con" : "Hồ sơ học sinh"}</h1>
-            <p>Quan tâm từng học sinh, theo dõi từng bước phát triển.</p>
+            <h1>{role === "PARENT" ? "Hồ sơ của con" : "Học sinh được phân công"}</h1>
+            <p>{role === "TEACHER" ? "Học sinh trong các lớp bạn đang phụ trách." : "Quan tâm từng học sinh, theo dõi từng bước phát triển."}</p>
           </div>
         </div>
         <StudentsTable />

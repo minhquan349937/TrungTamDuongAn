@@ -36,7 +36,7 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
             ? "Học sinh gần đây"
             : role === "PARENT"
               ? "Hồ sơ của con"
-              : "Hồ sơ học sinh"
+              : role === "TEACHER" ? "Học sinh được phân công" : "Hồ sơ học sinh"
         }
         subtitle={
           compact
@@ -45,7 +45,7 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
         }
         rows={view.students}
         pageSize={compact ? 3 : 10}
-        searchText={(s) => s.name + " " + s.id}
+        searchText={(s) => s.name + " " + (s.code ?? s.id)}
         statusOf={(s) => s.status}
         statuses={["Đang học", "Tạm nghỉ", "Ngừng học"]}
         action={
@@ -69,7 +69,7 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
                   <button className="name-link" onClick={() => setDetail(s.id)}>
                     {s.name}
                   </button>
-                  <small>Mã: {s.id}</small>
+                  <small>Mã: {s.code ?? s.id}</small>
                 </div>
               </div>
             ),
@@ -160,7 +160,7 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
               <div>
                 <h2>{student.name}</h2>
                 <span>
-                  {student.id} · <Badge>{student.status}</Badge>
+                  {student.code ?? student.id} · <Badge>{student.status}</Badge>
                 </span>
               </div>
             </div>
@@ -206,7 +206,7 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
                           label: "Giáo viên phụ trách",
                           children: db.staff.find(
                             (t) => t.id === student.teacherId,
-                          )?.name,
+                          )?.name ?? "Chưa phân công",
                         },
                         {
                           key: "joined",
@@ -216,7 +216,7 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
                         {
                           key: "note",
                           label: "Ghi chú",
-                          children: student.note,
+                          children: student.note || "—",
                         },
                       ]}
                     />
@@ -238,14 +238,14 @@ export function StudentsTable({ compact = false }: { compact?: boolean }) {
                         },
                         {
                           key: "phone",
-                          label: "Điện thoại giả lập",
+                          label: "Số điện thoại",
                           children: db.parents.find(
                             (p) => p.id === student.parentId,
                           )?.phone,
                         },
                         {
                           key: "email",
-                          label: "Email minh họa",
+                          label: "Email",
                           children: db.parents.find(
                             (p) => p.id === student.parentId,
                           )?.email,

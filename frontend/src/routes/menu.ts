@@ -27,9 +27,9 @@ export const adminMenu: MenuGroup[] = [
       ["Biểu mẫu đánh giá", "/evaluation"],
       ["Ngày nghỉ/lễ", "/holidays"],
       ["Sinh nhật", "/birthdays"],
-      ["Phiếu khảo sát", "/surveys"],
+      //["Phiếu khảo sát", "/surveys"],
       ["Kho tài liệu", "/documents"],
-      ["Thiết lập cơ sở", "/settings"],
+      //["Thiết lập cơ sở", "/settings"],
     ]),
   },
   {
@@ -55,8 +55,6 @@ export const adminMenu: MenuGroup[] = [
     icon: "daycare",
     items: items([
       ["Danh sách lớp bán trú", "/daycare"],
-      ["Thực đơn bán trú", "/daycare/menu"],
-      ["Theo dõi sinh hoạt, ăn và ngủ", "/daycare/living"],
       ["Điểm danh bán trú", "/attendance/daycare"],
     ]),
   },
@@ -65,8 +63,6 @@ export const adminMenu: MenuGroup[] = [
     icon: "groups",
     items: items([
       ["Danh sách lớp nhóm", "/groups"],
-      ["Học sinh tham gia", "/groups/students"],
-      ["Phân công giáo viên", "/groups/assign"],
       ["Kế hoạch nhóm", "/groups/plan"],
       ["Báo cáo nhóm", "/groups/report"],
     ]),
@@ -75,19 +71,15 @@ export const adminMenu: MenuGroup[] = [
     label: "Lịch học",
     icon: "calendar",
     items: items([
-      ["Lịch ngày", "/schedule"],
+      //["Lịch ngày", "/schedule"],
       ["Thời khóa biểu", "/schedule/week"],
-      ["Điều phối lịch học", "/schedule/manage"],
-      ["Thống kê chuyên cần", "/attendance"],
+      //["Điều phối lịch học", "/schedule/manage"],
     ]),
   },
   {
     label: "Thư viện",
     icon: "library",
-    items: items([
-      ["Thư viện nội bộ", "/library"],
-      ["Thư viện tham khảo", "/library/reference"],
-    ]),
+    items: items([["Thư viện nội bộ", "/library"]]),
   },
 ];
 export const teacherMenu: MenuGroup[] = [
@@ -98,6 +90,7 @@ export const teacherMenu: MenuGroup[] = [
       ["Tổng quan cá nhân", "/dashboard"],
       ["Học sinh được phân công", "/students"],
       ["Kế hoạch can thiệp", "/individual/plan"],
+      ["Báo cáo cá nhân", "/individual/report"],
       ["Lớp cá nhân phụ trách", "/individual"],
       ["Lớp nhóm phụ trách", "/groups"],
       ["Lớp bán trú phụ trách", "/daycare"],

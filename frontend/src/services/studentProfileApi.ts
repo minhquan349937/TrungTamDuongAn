@@ -22,6 +22,7 @@ export type ProfileInput = Omit<StudentProfile, "id" | "guardian"> & {
 };
 export type CreateProfileInput = Omit<ProfileInput, "code" | "status">;
 export type GuardianUpdateInput = Pick<GuardianProfile, "fullName" | "phone" | "email" | "address">;
+export type GuardianContactProfile = Omit<GuardianProfile, "relationship">;
 
 async function request<T>(url: string, method = "GET", body?: unknown): Promise<T> {
   let token = "";
@@ -43,6 +44,8 @@ async function request<T>(url: string, method = "GET", body?: unknown): Promise<
   return response.json() as Promise<T>;
 }
 export const studentProfileApi = {
+  guardians: () => request<GuardianContactProfile[]>("/api/guardians"),
+  createGuardian: (guardian: GuardianUpdateInput) => request<GuardianContactProfile>("/api/guardians", "POST", guardian),
   list: () => request<StudentProfile[]>("/api/student-profiles"),
   create: (profile: CreateProfileInput) => request<StudentProfile>("/api/student-profiles", "POST", profile),
   update: (id: string, profile: ProfileInput) => request<StudentProfile>(`/api/student-profiles/${encodeURIComponent(id)}`, "PUT", profile),

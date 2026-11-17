@@ -12,7 +12,13 @@ public record AppUserPrincipal(
         String email,
         String displayName,
         String role,
-        String passwordHash) implements UserDetails {
+        String passwordHash, String phone) implements UserDetails {
+
+    public AppUserPrincipal(String id,String email,String displayName,String role,String passwordHash) {
+        this(id,email,displayName,role,passwordHash,null);
+    }
+
+    @Override public String toString() {return "AppUserPrincipal[id="+id+", role="+role+"]";}
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -26,7 +32,7 @@ public record AppUserPrincipal(
 
     @Override
     public String getUsername() {
-        return email;
+        return email!=null?email:phone!=null?phone:id;
     }
 
     @Override

@@ -1,7 +1,7 @@
 import { useConfirm } from "../hooks/useConfirm";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Alert, Button, Input, Select, Modal, Empty } from "antd";
+import { Alert, App, Button, Input, Select, Modal, Empty, Spin } from "antd";
 import {
   Plus,
   Search,
@@ -18,8 +18,10 @@ import { mockService } from "../services/mockService";
 import { normalize } from "../utils/format";
 import { individualAssignmentApi, type AssignmentTeacher } from "../services/individualAssignmentApi";
 import { studentProfileApi, type StudentProfile } from "../services/studentProfileApi";
+import { classManagementApi } from "../services/classManagementApi";
 export function Classes() {
   const modal = useConfirm();
+  const { message } = App.useApp();
   const { db, view, role, run } = useDemo(),
     loc = useLocation(),
     nav = useNavigate();
@@ -33,6 +35,21 @@ export function Classes() {
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsError, setStudentsError] = useState("");
+  const [serverClasses, setServerClasses] = useState<SchoolClass[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classesError, setClassesError] = useState("");
+  const [reload, setReload] = useState(0);
+  const type = loc.pathname.startsWith("/individual") ? "Cá nhân" : loc.pathname.startsWith("/groups") ? "Lớp nhóm" : "Bán trú";
+  const serverManaged = role === "ADMIN" && type !== "Cá nhân";
+  useEffect(() => {
+    if (!serverManaged) return;
+    let active = true;
+    setServerClasses([]); setClassesLoading(true); setClassesError("");
+    classManagementApi.list(type).then(rows => { if (active) setServerClasses(rows); })
+      .catch((error: Error) => { if (active) setClassesError(error.message); })
+      .finally(() => { if (active) setClassesLoading(false); });
+    return () => { active = false; };
+  }, [serverManaged, type, reload]);
   useEffect(() => {
     if (role !== "ADMIN") return;
     let cancelled = false;
@@ -56,17 +73,17 @@ export function Classes() {
     return () => { cancelled = true; };
   }, [role, editor]);
   const teacherName = (id?: string) => teachers.find(t => t.id === id)?.fullName ?? db.staff.find(t => t.id === id)?.name;
-  const type = loc.pathname.startsWith("/individual")
-    ? "Cá nhân"
-    : loc.pathname.startsWith("/groups")
-      ? "Lớp nhóm"
-      : "Bán trú";
-  const classes = view.classes.filter(
+  const pendingClasses = serverManaged && !classesLoading && !classesError ? view.classes.filter(c =>
+    c.type === type && teachers.some(t => t.id === c.teacherId) && c.studentIds.every(id => students.some(s => s.id === id)) &&
+    !serverClasses.some(saved => saved.id === c.id)) : [];
+  const classSource = serverManaged ? [...serverClasses, ...pendingClasses] : view.classes;
+  const classes = classSource.filter(
     (c) =>
       c.type === type &&
       normalize(c.name).includes(normalize(query)) &&
       (status === "all" || c.status === status),
   );
+  const selectedClass = detail ? classSource.find(c => c.id === detail.id) : undefined;
   return (
     <>
       <div className="page-heading">
@@ -93,6 +110,7 @@ export function Classes() {
       </div>
       {teachersError && <Alert type="error" showIcon message={teachersError} />}
       {studentsError && <Alert type="error" showIcon message={studentsError} />}
+      {classesError && <Alert type="error" showIcon message={classesError} action={<Button onClick={() => setReload(n => n + 1)}>Thử lại</Button>} />}
       <section className="panel">
         <div className="table-toolbar">
           <Input
@@ -113,7 +131,7 @@ export function Classes() {
           />
           <span className="results-hint">{classes.length} lớp học</span>
         </div>
-        <div className="classes-grid">
+        <Spin spinning={classesLoading}><div className="classes-grid">
           {classes.map((c, i) => (
             <article className="class-card" key={c.id}>
               <div className="class-card-top">
@@ -124,6 +142,7 @@ export function Classes() {
               </div>
               <small>
                 {c.id} · {c.type}
+                  {pendingClasses.some(pending => pending.id === c.id) && " · Chỉ lưu trong trình duyệt"}
               </small>
               <h2>{c.name}</h2>
               <div className="class-teacher">
@@ -137,7 +156,7 @@ export function Classes() {
                 </span>
               </div>
               <div className="class-capacity">
-                <span>Sĩ số</span>
+                <span>{role === "PARENT" ? "Học sinh liên kết" : "Sĩ số"}</span>
                 <b>
                   {c.studentIds.length} / {c.capacity}
                 </b>
@@ -153,6 +172,7 @@ export function Classes() {
               </div>
               <div className="class-actions">
                 <Button onClick={() => setDetail(c)}>Xem chi tiết</Button>
+                {pendingClasses.some(pending => pending.id === c.id) && <Button type="primary" onClick={() => setEditor(c)}>Đồng bộ lên hệ thống</Button>}
                 {role === "ADMIN" && (
                   <>
                     <Button
@@ -166,15 +186,21 @@ export function Classes() {
                       icon={<Trash2 size={15} />}
                       onClick={() =>
                         modal.confirm({
-                          title: "Xóa lớp " + c.name + "?",
+                          title: (serverManaged ? "Đóng lớp " : "Xóa lớp ") + c.name + "?",
                           content:
-                            "Các buổi học của lớp cũng sẽ được xóa khỏi bản demo.",
-                          okText: "Xóa lớp",
+                            serverManaged ? "Lớp sẽ ngừng hiển thị trong danh sách phụ trách của giáo viên. Lịch sử học tập được giữ lại." : "Các buổi học của lớp cũng sẽ được xóa khỏi bản demo.",
+                          okText: serverManaged ? "Đóng lớp" : "Xóa lớp",
                           cancelText: "Hủy",
-                          onOk: () =>
+                          onOk: async () => {
+                            if (serverManaged && serverClasses.some(saved => saved.id === c.id)) {
+                              try { await classManagementApi.close(c.id); message.success("Đã đóng lớp học."); setReload(n => n + 1); }
+                              catch (error) { message.error((error as Error).message); throw error; }
+                              return;
+                            }
                             run((d) =>
                               mockService.remove(d, role, "classes", c.id),
-                            ),
+                            );
+                          },
                         })
                       }
                     />
@@ -183,8 +209,8 @@ export function Classes() {
               </div>
             </article>
           ))}
-        </div>
-        {!classes.length && <Empty description="Chưa có lớp học phù hợp" />}
+        </div></Spin>
+        {!classesLoading && !classes.length && <Empty description="Chưa có lớp học phù hợp" />}
       </section>
       {editor !== undefined && (
         <RecordEditor
@@ -195,12 +221,21 @@ export function Classes() {
           teachersLoading={teachersLoading}
           classStudents={students}
           studentsLoading={studentsLoading}
+          onSaveClass={serverManaged ? async row => {
+            const existing = serverClasses.some(saved => saved.id === row.id);
+            await classManagementApi.save(row, existing);
+            if (!existing && db.classes.some(local => local.id === row.id)) {
+              run(data => ({ ...data, classes: data.classes.filter(local => local.id !== row.id) }), "Đã đồng bộ lớp học lên hệ thống.");
+            }
+            message.success(editor ? "Đã cập nhật lớp học và phân công." : "Đã tạo lớp học và phân công.");
+            setReload(n => n + 1);
+          } : undefined}
           onClose={() => setEditor(undefined)}
         />
       )}
       <Modal
-        open={!!detail}
-        title={detail?.name}
+        open={!!selectedClass}
+        title={selectedClass?.name}
         onCancel={() => setDetail(undefined)}
         footer={
           <Button
@@ -212,12 +247,12 @@ export function Classes() {
         }
       >
         <p>
-          {detail?.type} · Giáo viên:{" "}
-          {teacherName(detail?.teacherId)}
+          {selectedClass?.type} · Giáo viên:{" "}
+          {teacherName(selectedClass?.teacherId)}
         </p>
         <h3>Học sinh tham gia</h3>
         <div className="detail-list">
-          {detail?.studentIds.map((id) => (
+          {selectedClass?.studentIds.map((id) => (
             <div key={id}>
               <span>{students.find(s => s.id === id)?.fullName ?? db.students.find(s => s.id === id)?.name}</span>
               <small>{students.find(s => s.id === id)?.code ?? db.students.find(s => s.id === id)?.code ?? "—"}</small>

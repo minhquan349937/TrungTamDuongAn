@@ -1,7 +1,7 @@
 import { useConfirm } from "../hooks/useConfirm";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Button, Input, Select, Segmented, Modal, Empty } from "antd";
+import { Alert, App, Button, Input, Select, Segmented, Modal, Empty, Spin } from "antd";
 import {
   Plus,
   ChevronLeft,
@@ -13,9 +13,9 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { useDemo } from "../hooks/useDemo";
-import { RecordEditor } from "../features/RecordEditor";
+import { ScheduleEditor } from "../features/ScheduleEditor";
 import { Badge, Avatar } from "../components/ui";
-import { mockService } from "../services/mockService";
+import { scheduleApi, type ScheduleData } from "../services/scheduleApi";
 import { today, dateLabel } from "../utils/format";
 import type { Session } from "../types";
 function shift(date: string, days: number) {
@@ -25,8 +25,16 @@ function shift(date: string, days: number) {
 }
 export function Schedule() {
   const modal = useConfirm();
-  const { db, view, role, run } = useDemo(),
+  const { message } = App.useApp();
+  const { role, child } = useDemo(),
     loc = useLocation();
+  const [data, setData] = useState<ScheduleData | null>(null);
+  const [loadedRange, setLoadedRange] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reload, setReload] = useState(0);
+  const [savingAttendance, setSavingAttendance] = useState(false);
+  const generation = useRef(0);
   const [date, setDate] = useState(today()),
     [mode, setMode] = useState(loc.pathname.endsWith("week") ? "Tuần" : "Ngày"),
     [teacher, setTeacher] = useState("all"),
@@ -43,6 +51,27 @@ export function Schedule() {
     mode === "Tuần"
       ? Array.from({ length: 7 }, (_, i) => shift(monday, i))
       : [date];
+  const from = days[0], to = days[days.length - 1], range = `${from}:${to}`;
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      const request = ++generation.current;
+      setLoading(true);
+      try {
+        const next = await scheduleApi.get(from, to);
+        if (active && request === generation.current) { setData(next); setLoadedRange(`${from}:${to}`); setError(""); }
+      } catch (cause) {
+        if (active && request === generation.current) { setData(null); setError((cause as Error).message); }
+      } finally { if (active && request === generation.current) setLoading(false); }
+    };
+    void refresh();
+    const focus = () => { if (document.visibilityState === "visible") void refresh(); };
+    const timer = window.setInterval(focus, 15000);
+    window.addEventListener("focus", focus); document.addEventListener("visibilitychange", focus);
+    return () => { active = false; generation.current++; window.clearInterval(timer); window.removeEventListener("focus", focus); document.removeEventListener("visibilitychange", focus); };
+  }, [from, to, reload]);
+  const db: ScheduleData = loadedRange === range && data ? data : { classes: [], staff: [], students: [], sessions: [] };
+  const view = { ...db, sessions: role === "PARENT" && child ? db.sessions.filter(s => s.studentIds?.includes(child)).map(s => ({ ...s, studentIds: [child], attendance: Object.fromEntries(Object.entries(s.attendance).filter(([id]) => id === child)) })) : db.sessions };
   const sessions = view.sessions
     .filter(
       (s) =>
@@ -57,11 +86,10 @@ export function Schedule() {
     setAtt(s);
     setAttendance({ ...s.attendance });
   }
-  const studentIds = att
-    ? (db.classes
-        .find((c) => c.id === att.classId)
-        ?.studentIds.filter((id) => view.students.some((s) => s.id === id)) ??
-      [])
+  const activeAttendance = view.sessions.find(session => session.id === att?.id);
+  const studentIds = activeAttendance
+    ? (activeAttendance.studentIds ?? [])
+        .filter((id) => view.students.some((s) => s.id === id))
     : [];
   return (
     <>
@@ -79,12 +107,14 @@ export function Schedule() {
           <Button
             type="primary"
             icon={<Plus size={16} />}
+            disabled={loading || !!error}
             onClick={() => setEditor(null)}
           >
             Tạo lịch học
           </Button>
         )}
       </div>
+      {error && <Alert type="error" showIcon message={error} action={<Button onClick={() => setReload(n => n + 1)}>Thử lại</Button>} />}
       <section className="panel schedule-panel">
         <div className="schedule-toolbar">
           <div className="date-navigation">
@@ -133,7 +163,7 @@ export function Schedule() {
           />
           <span>{sessions.length} buổi học</span>
         </div>
-        <div
+        <Spin spinning={loading}><div
           className={
             "calendar-grid " + (mode === "Tuần" ? "week-view" : "day-view")
           }
@@ -213,22 +243,32 @@ export function Schedule() {
               </div>
             </div>
           ))}
-        </div>
+        </div></Spin>
       </section>
       {editor !== undefined && (
-        <RecordEditor
-          kind="sessions"
+        <ScheduleEditor
           record={editor ?? undefined}
+          date={date}
+          data={db}
+          onSave={async input => {
+            await scheduleApi.save(input, editor?.id);
+            setDate(input.date); setEditor(undefined); setReload(n => n + 1);
+            message.success(editor ? "Đã lưu thay đổi lịch học vào hệ thống." : "Đã lưu lịch học vào hệ thống.");
+          }}
           onClose={() => setEditor(undefined)}
         />
       )}
       <Modal
-        open={!!att}
+        open={!!activeAttendance}
         title={
           "Điểm danh · " + db.classes.find((c) => c.id === att?.classId)?.name
         }
-        onCancel={() => setAtt(undefined)}
-        onOk={() => {
+        onCancel={() => { if (!savingAttendance) setAtt(undefined); }}
+        confirmLoading={savingAttendance}
+        cancelButtonProps={{ disabled: savingAttendance }}
+        closable={!savingAttendance}
+        maskClosable={!savingAttendance}
+        onOk={async () => {
           if (studentIds.some((id) => !attendance[id])) {
             modal.warning({
               title: "Chưa hoàn tất điểm danh",
@@ -237,14 +277,13 @@ export function Schedule() {
             });
             return;
           }
-          if (
-            att &&
-            run(
-              (d) => mockService.attendance(d, role, att.id, attendance),
-              "Đã lưu điểm danh",
-            )
-          )
-            setAtt(undefined);
+          if (!activeAttendance) return;
+          setSavingAttendance(true);
+          try {
+            await scheduleApi.attendance(activeAttendance.id, Object.fromEntries(studentIds.map(id => [id, attendance[id]])));
+            setAtt(undefined); setReload(n => n + 1); message.success("Đã lưu điểm danh vào hệ thống.");
+          } catch (cause) { message.error((cause as Error).message); }
+          finally { setSavingAttendance(false); }
         }}
         okText="Lưu điểm danh"
         cancelText="Đóng"
@@ -283,7 +322,7 @@ export function Schedule() {
                   placeholder="Chọn trạng thái"
                   value={attendance[id]}
                   onChange={(v) => setAttendance({ ...attendance, [id]: v })}
-                  options={["Có mặt", "Vắng", "Có phép"].map((value) => ({
+                  options={["Có mặt", "Vắng", "Có phép", "Đi muộn"].map((value) => ({
                     value,
                     label: value,
                   }))}

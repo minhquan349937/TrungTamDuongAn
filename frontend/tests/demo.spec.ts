@@ -10,7 +10,7 @@ test.beforeEach(async ({ page }) => {
       return;
     }
     if (path === "/api/auth/login") {
-      const email = route.request().postDataJSON().email as string;
+      const email = route.request().postDataJSON().login as string;
       currentRole = email.startsWith("admin") ? "ADMIN" : email.startsWith("teacher") ? "TEACHER" : "PARENT";
     } else if (path === "/api/auth/logout") {
       currentRole = null;
@@ -47,7 +47,7 @@ const roleAccounts = {
 async function loginAs(page: import("@playwright/test").Page, role: keyof typeof roleAccounts) {
   const [email, password] = roleAccounts[role];
   await page.goto("/#/login");
-  await page.getByLabel("Email", { exact: true }).fill(email);
+  await page.getByLabel("Số điện thoại hoặc email", { exact: true }).fill(email);
   await page.getByLabel("Mật khẩu", { exact: true }).fill(password);
   const csrfRefresh = page.waitForResponse((response) =>
     new URL(response.url()).pathname === "/api/auth/csrf" && response.request().method() === "GET"

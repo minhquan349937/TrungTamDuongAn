@@ -4,7 +4,8 @@ import type { Role } from "../types";
 
 export type AuthUser = {
   id: string;
-  email: string;
+  email: string | null;
+  phone?: string | null;
   displayName: string;
   role: Role;
 };
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         "Content-Type": "application/json",
         "X-CSRF-TOKEN": token,
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ login: email, password }),
     });
     const body = (await response.json().catch(() => ({}))) as
       | AuthUser

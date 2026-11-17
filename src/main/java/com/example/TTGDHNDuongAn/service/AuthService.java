@@ -32,6 +32,6 @@ public class AuthService {
 
     public UserProfile currentUser(Authentication authentication) {
         AppUserPrincipal principal = (AppUserPrincipal) authentication.getPrincipal();
-        return new UserProfile(principal.id(), principal.email(), principal.displayName(), principal.role());
+        return new UserProfile(principal.id(), principal.email(), principal.displayName(), principal.role(),principal.phone());
     }
 }

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-@RestControllerAdvice(assignableTypes = {StudentProfileController.class, GuardianProfileController.class, StaffProfileController.class})
+@RestControllerAdvice(assignableTypes = {StudentProfileController.class, GuardianProfileController.class, StaffProfileController.class, AccountManagementController.class})
 public class StudentProfileExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String,Object>> businessError(ResponseStatusException error) {

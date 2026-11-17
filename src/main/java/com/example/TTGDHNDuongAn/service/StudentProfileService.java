@@ -24,7 +24,8 @@ public class StudentProfileService {
                           String status, String notes, Guardian guardian) {}
 
     private final JdbcTemplate jdbc;
-    public StudentProfileService(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    private final GuardianProfileService guardians;
+    public StudentProfileService(JdbcTemplate jdbc,GuardianProfileService guardians) { this.jdbc = jdbc;this.guardians=guardians; }
 
     private static final String SELECT = "SELECT s.id,s.code,s.full_name,s.birth_date,s.admitted_on,s.status,s.notes," +
         "g.id guardian_id,g.code guardian_code,g.full_name guardian_name,g.phone,g.email,g.address,sg.relationship " +
@@ -71,6 +72,7 @@ public class StudentProfileService {
     private String trimmed(String value) { return value == null ? null : value.trim(); }
 
     private String nextStudentCode() {
+        jdbc.update("INSERT IGNORE INTO student_code_sequence(id,next_value) VALUES(1,1)");
         Long next = jdbc.queryForObject("SELECT next_value FROM student_code_sequence WHERE id=1 FOR UPDATE", Long.class);
         if (next == null) throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,"Chưa khởi tạo bộ đếm mã học sinh.");
         Long maximum = jdbc.queryForObject("SELECT COALESCE(MAX(CAST(SUBSTRING(code,3) AS UNSIGNED)),0) " +
@@ -81,28 +83,14 @@ public class StudentProfileService {
         return "HS" + String.format(Locale.ROOT,"%03d",value);
     }
 
-    private String nextGuardianCode() {
-        Long next = jdbc.queryForObject("SELECT next_value FROM profile_code_sequences WHERE entity_name='guardian' FOR UPDATE",Long.class);
-        if (next == null) throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,"Chưa khởi tạo bộ đếm mã phụ huynh.");
-        Long maximum = jdbc.queryForObject("SELECT COALESCE(MAX(CAST(SUBSTRING(code,3) AS UNSIGNED)),0) " +
-            "FROM guardian WHERE code REGEXP '^PH[0-9]+$'",Long.class);
-        long value=Math.max(next,maximum == null ? 1 : maximum+1);
-        if (value > 999999999L) throw new ResponseStatusException(HttpStatus.CONFLICT,"Đã hết dải mã phụ huynh.");
-        jdbc.update("UPDATE profile_code_sequences SET next_value=? WHERE entity_name='guardian'",value+1);
-        return "PH"+String.format(Locale.ROOT,"%03d",value);
-    }
-
     @Transactional
     public Profile create(ProfileInput input) {
         validate(input,false);
         String code=nextStudentCode();
-        String guardianCode=nextGuardianCode();
-        String studentId=ShortIds.next(jdbc, "student"), guardianId=ShortIds.next(jdbc, "guardian");
+        var parent=guardians.create(parentInput(input.guardian()));
+        String studentId=ShortIds.next(jdbc, "student"), guardianId=parent.id();
         jdbc.update("INSERT INTO student(id,code,full_name,birth_date,admitted_on,status,notes) VALUES(?,?,?,?,?,?,?)",
             studentId,code,input.fullName().trim(),Date.valueOf(input.birthDate()),Date.valueOf(input.admittedOn()),"ACTIVE",trimmed(input.notes()));
-        jdbc.update("INSERT INTO guardian(id,code,full_name,phone,email,address) VALUES(?,?,?,?,?,?)",
-            guardianId,guardianCode,input.guardian().fullName().trim(),
-            input.guardian().phone().trim(),trimmed(input.guardian().email()),trimmed(input.guardian().address()));
         jdbc.update("INSERT INTO student_guardian(student_id,guardian_id,relationship,is_primary,can_view_portal) VALUES(?,?,?,1,0)",
             studentId,guardianId,input.guardian().relationship());
         return get(studentId);
@@ -123,19 +111,17 @@ public class StudentProfileService {
             "withdrawn_on=CASE WHEN ?='WITHDRAWN' THEN withdrawn_on ELSE NULL END WHERE id=?",
             input.code().trim(),input.fullName().trim(),Date.valueOf(input.birthDate()),Date.valueOf(input.admittedOn()),input.status(),trimmed(input.notes()),input.status(),id);
         if (old.guardian() == null) {
-            String guardianId=ShortIds.next(jdbc, "guardian");
-            jdbc.update("INSERT INTO guardian(id,code,full_name,phone,email,address) VALUES(?,?,?,?,?,?)",
-                guardianId,nextGuardianCode(),input.guardian().fullName().trim(),
-                input.guardian().phone().trim(),trimmed(input.guardian().email()),trimmed(input.guardian().address()));
+            String guardianId=guardians.create(parentInput(input.guardian())).id();
             jdbc.update("INSERT INTO student_guardian(student_id,guardian_id,relationship,is_primary,can_view_portal) VALUES(?,?,?,1,0)",
                 id,guardianId,input.guardian().relationship());
         } else {
-            jdbc.update("UPDATE guardian SET full_name=?,phone=?,email=?,address=? WHERE id=?",
-                input.guardian().fullName().trim(),input.guardian().phone().trim(),trimmed(input.guardian().email()),
-                trimmed(input.guardian().address()),old.guardian().id());
+            guardians.update(old.guardian().id(),parentInput(input.guardian()));
             jdbc.update("UPDATE student_guardian SET relationship=? WHERE student_id=? AND guardian_id=?",
                 input.guardian().relationship(),id,old.guardian().id());
         }
         return get(id);
+    }
+    private GuardianProfileService.GuardianInput parentInput(GuardianInput input) {
+        return new GuardianProfileService.GuardianInput(input.fullName(),input.phone(),input.email(),input.address());
     }
 }

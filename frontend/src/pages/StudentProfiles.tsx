@@ -108,6 +108,7 @@ export function StudentProfiles() {
         </div>
         <Form.Item name="notes" label="Ghi chú"><Input.TextArea rows={2} /></Form.Item>
         <h3>Phụ huynh chính</h3>
+        {!editor && <Alert type="info" showIcon message="Tự động tạo tài khoản phụ huynh: đăng nhập bằng số điện thoại, mật khẩu ban đầu 123456. Email không bắt buộc." style={{ marginBottom: 16 }} />}
         <div className="form-grid">
           <Form.Item name={["guardian", "fullName"]} label="Họ và tên phụ huynh" rules={[...required, { whitespace: true }]}><Input maxLength={150} /></Form.Item>
           <Form.Item name={["guardian", "relationship"]} label="Quan hệ với học sinh" rules={required}><Select options={Object.entries(relationshipLabels).map(([value, label]) => ({ value, label }))} /></Form.Item>

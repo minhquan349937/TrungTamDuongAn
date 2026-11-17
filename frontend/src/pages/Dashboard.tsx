@@ -30,8 +30,9 @@ import { StatCard, SectionTitle, Badge } from "../components/ui";
 import { StudentsTable } from "../features/PeopleTables";
 import { DashboardStudentsTable, DashboardStaffTable } from "../features/DashboardPeopleTables";
 import { today, dateLabel, money } from "../utils/format";
-import { mockService } from "../services/mockService";
+import { useAuth } from "../auth/AuthProvider";
 import { dashboardApi, type DashboardSummary } from "../services/dashboardApi";
+import { feeApi, type FeeRecord } from "../services/feeApi";
 export function Charts() {
   const { view } = useDemo(),
     [range, setRange] = useState("6");
@@ -192,13 +193,35 @@ export function Charts() {
   );
 }
 export function Dashboard() {
-  const { db, view, role, run } = useDemo(),
+  const { db, view, role } = useDemo(),
     nav = useNavigate();
+  const { user } = useAuth();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryError, setSummaryError] = useState("");
+  const [parentFees, setParentFees] = useState<FeeRecord[] | null>(null);
+  const [feeError, setFeeError] = useState("");
   const admin = role === "ADMIN",
     teacher = role === "TEACHER",
     day = today();
+  useEffect(() => {
+    if (role !== "PARENT") return;
+    let active = true;
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      void feeApi.list().then(data => {
+        if (active) { setParentFees(data); setFeeError(""); }
+      }).catch((error: Error) => { if (active) setFeeError(error.message); });
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      active = false; window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [role]);
   useEffect(() => {
     if (!admin) return;
     let active = true;
@@ -213,7 +236,7 @@ export function Dashboard() {
   const attendance = view.sessions.flatMap((s) => Object.values(s.attendance)),
     rate = attendance.length
       ? Math.round(
-          (attendance.filter((v) => v === "Có mặt").length /
+          (attendance.filter((v) => v === "Có mặt" || v === "Đi muộn").length /
             attendance.length) *
             100,
         )
@@ -233,7 +256,7 @@ export function Dashboard() {
             {admin
               ? "Một ngày mới, những bước tiến mới"
               : teacher
-                ? "Chào cô Thu Hà, ngày mới tốt lành!"
+                ? `Chào ${user?.displayName ?? "bạn"}, ngày mới tốt lành!`
                 : "Cùng con lớn lên mỗi ngày"}
             <span className="greeting-sun">☀</span>
           </h1>
@@ -246,6 +269,7 @@ export function Dashboard() {
         </div>
       </div>
       {admin && summaryError && <Alert type="error" showIcon message={summaryError} style={{ marginBottom: 16 }} />}
+      {role === "PARENT" && feeError && <Alert type="error" showIcon message={feeError} style={{ marginBottom: 16 }} />}
       <div className="stats-grid">
         {admin ? (
           <>
@@ -285,7 +309,7 @@ export function Dashboard() {
               value={teacher ? view.students.length : view.classes.length}
               icon={<Users size={22} />}
               delta="Đã liên kết"
-              caption="hồ sơ minh họa"
+              caption={teacher ? "học sinh đang được phân công" : "hồ sơ đã liên kết"}
             />
             <StatCard
               label={teacher ? "Buổi dạy hôm nay" : "Buổi học hôm nay"}
@@ -303,18 +327,18 @@ export function Dashboard() {
             />
             <StatCard
               label={
-                teacher ? "Ngày đã chấm công" : "Khoản thu chưa thanh toán"
+                teacher ? "Lớp nhóm phụ trách" : "Khoản thu chưa thanh toán"
               }
-              value={teacher ? (db.checkins.NV001 ?? []).length : unpaid.length}
+              value={teacher ? view.classes.filter(c => c.type === "Lớp nhóm").length : parentFees?.filter(f => f.outstandingAmount > 0).length ?? "…"}
               icon={
                 teacher ? <CalendarCheck size={22} /> : <Wallet size={22} />
               }
               delta={
                 teacher
-                  ? "Trong dữ liệu demo"
-                  : money(unpaid.reduce((s, f) => s + f.amount, 0))
+                  ? "Theo phân công hiện tại"
+                  : parentFees ? money(parentFees.reduce((s, f) => s + Math.max(0, f.outstandingAmount), 0)) : "Đang tải…"
               }
-              caption={teacher ? "Chấm công mỗi ngày" : "tổng còn lại"}
+              caption={teacher ? "lớp đang hoạt động" : "tổng còn lại"}
             />
           </>
         )}
@@ -412,23 +436,15 @@ export function Dashboard() {
             <div className="action-banner">
               <div>
                 <h3>Bắt đầu một ngày đồng hành</h3>
-                <p>Chấm công và quản lý lịch nghỉ của bạn.</p>
+                <p>Xem học sinh và lớp nhóm bạn đang phụ trách.</p>
               </div>
               <Button
                 type="primary"
-                disabled={(db.checkins.NV001 ?? []).includes(day)}
-                onClick={() =>
-                  run(
-                    (d) => mockService.checkin(d, role),
-                    "Chấm công thành công",
-                  )
-                }
+                onClick={() => nav("/students")}
               >
-                {(db.checkins.NV001 ?? []).includes(day)
-                  ? "Đã chấm công hôm nay"
-                  : "Chấm công hôm nay"}
+                Học sinh phụ trách
               </Button>
-              <Button onClick={() => nav("/leave")}>Đăng ký nghỉ phép</Button>
+              <Button onClick={() => nav("/groups")}>Lớp nhóm phụ trách</Button>
             </div>
           )}
           <StudentsTable />

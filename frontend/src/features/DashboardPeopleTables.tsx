@@ -124,7 +124,7 @@ export function DashboardStaffTable({ onChanged, compact = true }: { onChanged?:
       onCancel={() => setEditor(undefined)} onOk={() => form.submit()} confirmLoading={saving}
       okText={editor ? "Lưu thay đổi" : "Tạo hồ sơ"} width={680} destroyOnClose>
       <Form form={form} layout="vertical" onFinish={save}>
-        {!editor && <Alert type="info" showIcon message="Tài khoản được tạo theo chức vụ đã chọn. Đăng nhập bằng email, mật khẩu mặc định: 123456." />}
+        {!editor && <Alert type="info" showIcon message="Tài khoản được tạo theo chức vụ đã chọn. Đăng nhập bằng số điện thoại hoặc email, mật khẩu ban đầu: 123456." />}
         <h3>Thông tin nhân viên</h3>
         <div className="form-grid">
           <Form.Item name="fullName" label="Họ và tên" rules={[...required, { whitespace: true }]}><Input maxLength={150} /></Form.Item>

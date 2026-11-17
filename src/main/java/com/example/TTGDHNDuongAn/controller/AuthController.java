@@ -42,13 +42,14 @@ public class AuthController {
             @RequestBody LoginRequest body,
             HttpServletRequest request,
             HttpServletResponse response) {
-        if (body == null || body.email() == null || body.password() == null
-                || body.email().isBlank() || body.password().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng nhập email và mật khẩu."));
+        String login=body==null?null:body.login()!=null?body.login():body.email();
+        if (login == null || body.password() == null
+                || login.isBlank() || body.password().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Vui lòng nhập số điện thoại hoặc email và mật khẩu."));
         }
 
         try {
-            Authentication authentication = authService.authenticate(body.email(), body.password());
+            Authentication authentication = authService.authenticate(login, body.password());
             request.getSession(true);
             request.changeSessionId();
             SecurityContext context = SecurityContextHolder.createEmptyContext();
@@ -58,7 +59,7 @@ public class AuthController {
             return ResponseEntity.ok(UserResponse.from(authService.currentUser(authentication)));
         } catch (AuthenticationException exception) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Email hoặc mật khẩu không chính xác."));
+                    .body(Map.of("message", "Thông tin đăng nhập hoặc mật khẩu không chính xác."));
         }
     }
 
@@ -76,11 +77,13 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    public record LoginRequest(String email, String password) {}
+    public record LoginRequest(String email, String password, String login) {
+        @Override public String toString() {return "LoginRequest[redacted]";}
+    }
 
-    public record UserResponse(String id, String email, String displayName, String role) {
+    public record UserResponse(String id, String email, String displayName, String role,String phone) {
         static UserResponse from(UserProfile user) {
-            return new UserResponse(user.id(), user.email(), user.displayName(), user.role());
+            return new UserResponse(user.id(), user.email(), user.displayName(), user.role(),user.phone());
         }
     }
 }

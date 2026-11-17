@@ -5,9 +5,10 @@ export function visibleData(
   db: Database,
   role: Role,
   child?: string,
+  parentId?: string,
 ): Database {
   if (role === "ADMIN") return db;
-  const actor = actorId(role);
+  const actor = role === "PARENT" && parentId ? parentId : actorId(role);
   const ownClasses = db.classes.filter((c) => c.teacherId === actor);
   const ids =
     role === "PARENT"
@@ -53,7 +54,7 @@ export function visibleData(
       .filter((s) =>
         role === "TEACHER"
           ? s.teacherId === actor
-          : classes.some((c) => c.id === s.classId),
+          : classes.some((c) => c.id === s.classId) && (!s.studentIds || s.studentIds.some(id => ids.includes(id))),
       )
       .map((s) => ({
         ...s,

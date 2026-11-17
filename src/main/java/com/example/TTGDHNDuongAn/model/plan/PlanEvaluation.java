@@ -2,6 +2,8 @@ package com.example.TTGDHNDuongAn.model.plan;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name="plan_evaluations")
@@ -10,9 +12,13 @@ public class PlanEvaluation {
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="learning_plan_id",nullable=false) private LearningPlanEntity learningPlan;
     @Column(name="evaluation_notes",nullable=false,columnDefinition="TEXT") private String evaluationNotes;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="evaluated_by",nullable=false) private AppUserEntity evaluatedBy;
+    // Store UTC wall-clock values directly in DATETIME; Timestamp + Calendar shifts them on non-UTC JVMs.
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE_TIME)
     @Column(name="evaluated_at",nullable=false) private LocalDateTime evaluatedAt;
     @Column(name="sent_to_parent",nullable=false) private boolean sentToParent;
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE_TIME)
     @Column(name="sent_at") private LocalDateTime sentAt;
+    @JdbcTypeCode(SqlTypes.LOCAL_DATE_TIME)
     @Column(name="updated_at",nullable=false) private LocalDateTime updatedAt;
     protected PlanEvaluation() {}
     public PlanEvaluation(String id,LearningPlanEntity plan,AppUserEntity actor,String notes,LocalDateTime now) {

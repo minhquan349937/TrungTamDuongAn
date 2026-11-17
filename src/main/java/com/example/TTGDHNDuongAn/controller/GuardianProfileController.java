@@ -11,6 +11,9 @@ public class GuardianProfileController {
     private final GuardianProfileService service;
     public GuardianProfileController(GuardianProfileService service) { this.service = service; }
 
+    @GetMapping public java.util.List<Guardian> list() {return service.list();}
+    @PostMapping public Guardian create(@RequestBody GuardianInput input) {return service.create(input);}
+
     @PutMapping("/{id}")
     public Guardian update(@PathVariable String id, @RequestBody GuardianInput input) {
         return service.update(id, input);

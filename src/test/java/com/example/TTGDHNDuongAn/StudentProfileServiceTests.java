@@ -24,7 +24,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 class StudentProfileServiceTests {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    private final StudentProfileService service = new StudentProfileService(jdbc);
+    private final com.example.TTGDHNDuongAn.service.GuardianProfileService guardians=mock(com.example.TTGDHNDuongAn.service.GuardianProfileService.class);
+    private final StudentProfileService service = new StudentProfileService(jdbc,guardians);
     private final GuardianInput guardian = new GuardianInput("Nguyễn Thị Mẹ", "0912345678", null, null, "MOTHER");
 
     @Test void rejectsInvalidDatesBeforeWritingAnything() {
@@ -52,6 +53,7 @@ class StudentProfileServiceTests {
             LocalDate.of(2024, 1, 1), null, null,
             new GuardianInput("Nguyễn Văn Ông", "0912345678", null, null, "GRANDFATHER"));
         var subject = spy(service);
+        when(guardians.create(any())).thenReturn(new com.example.TTGDHNDuongAn.service.GuardianProfileService.Guardian("PH003","PH003","Nguyễn Văn Ông","0912345678",null,null));
         when(jdbc.queryForObject("SELECT next_value FROM profile_code_sequences WHERE entity_name='guardian' FOR UPDATE",Long.class)).thenReturn(1L);
         when(jdbc.queryForObject("SELECT next_value FROM student_code_sequence WHERE id=1 FOR UPDATE",Long.class)).thenReturn(1L);
         when(jdbc.queryForObject(startsWith("SELECT COALESCE(MAX(CAST(SUBSTRING(code,3)"),eq(Long.class))).thenReturn(2L);

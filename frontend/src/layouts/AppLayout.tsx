@@ -34,18 +34,17 @@ const icons = {
   library: BookOpen,
 };
 export function AppLayout() {
-  const { db, role, child, setChild } = useDemo(),
+  const { db, view, role, child, setChild } = useDemo(),
     nav = useNavigate(),
     location = useLocation();
   const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false),
     [mobile, setMobile] = useState(false),
-    [expanded, setExpanded] = useState<string[]>([
-      "Quản lý hệ thống",
-      "Không gian giáo viên",
-      "Công việc của tôi",
-      "Đồng hành cùng con",
-    ]),
+    [expanded, setExpanded] = useState<string | null>(() =>
+      getMenu(role).find((group) => group.items.some((item) =>
+        item.path === location.pathname || location.pathname.startsWith(item.path + "/"),
+      ))?.label ?? null,
+    ),
     [search, setSearch] = useState("");
   const menu = getMenu(role),
     roleName =
@@ -55,6 +54,11 @@ export function AppLayout() {
           ? "Giáo viên"
           : "Phụ huynh";
   const name = user?.displayName ?? "Tài khoản";
+  const childOptions = role === "PARENT"
+    ? db.students
+      .filter((student) => view.parents.some((parent) => parent.studentIds.includes(student.id)))
+      .map((student) => ({ value: student.id, label: student.name }))
+    : [];
   return (
     <div
       className={
@@ -93,7 +97,7 @@ export function AppLayout() {
         <nav>
           {menu.map((g) => {
             const Icon = icons[g.icon as keyof typeof icons],
-              open = expanded.includes(g.label),
+              open = expanded === g.label,
               active = g.items.some(
                 (i) =>
                   i.path === location.pathname ||
@@ -104,13 +108,10 @@ export function AppLayout() {
                 <button
                   className={"nav-parent " + (active ? "active-group" : "")}
                   title={g.label}
+                  aria-expanded={open && !collapsed}
                   onClick={() => {
                     if (collapsed) setCollapsed(false);
-                    setExpanded(
-                      open
-                        ? expanded.filter((x) => x !== g.label)
-                        : [...expanded, g.label],
-                    );
+                    setExpanded(open && !collapsed ? null : g.label);
                   }}
                 >
                   <Icon size={19} />
@@ -123,6 +124,7 @@ export function AppLayout() {
                       <NavLink
                         key={i.path}
                         to={i.path}
+                        end={g.items.some((sibling) => sibling.path.startsWith(i.path + "/"))}
                         onClick={() => setMobile(false)}
                       >
                         <span className="nav-dot" />
@@ -219,7 +221,7 @@ export function AppLayout() {
               content={
                 <div>
                   <b>{name}</b>
-                  <p>{user?.email}</p>
+                  <p>{user?.email || user?.phone}</p>
                   <Button
                     onClick={() =>
                       nav(
@@ -254,12 +256,13 @@ export function AppLayout() {
               <span>Đang đồng hành cùng</span>
               <Select
                 aria-label="Chọn hồ sơ con"
-                value={child}
+                value={child || undefined}
                 onChange={setChild}
-                options={db.students
-                  .filter((s) => db.parents[0].studentIds.includes(s.id))
-                  .map((s) => ({ value: s.id, label: s.name }))}
+                options={childOptions}
+                disabled={childOptions.length === 0}
+                placeholder="Chưa có hồ sơ con"
               />
+              {childOptions.length === 0 && <span>Chưa có hồ sơ con được liên kết.</span>}
             </div>
           )}
           <Outlet />

@@ -13,7 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 class GuardianProfileServiceTests {
     private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
-    private final GuardianProfileService service = new GuardianProfileService(jdbc);
+    private final GuardianProfileService service = new GuardianProfileService(jdbc,mock(com.example.TTGDHNDuongAn.service.AccountContactService.class));
 
     @Test void requiresContactFieldsBeforeWriting() {
         var error = assertThrows(ResponseStatusException.class,
@@ -26,8 +26,7 @@ class GuardianProfileServiceTests {
         var error = assertThrows(ResponseStatusException.class,
             () -> service.update("missing",new GuardianInput("Nguyễn Thị Mai","0912345678",null,null)));
         assertEquals(404,error.getStatusCode().value());
-        verify(jdbc).update(startsWith("UPDATE guardian SET"),eq("Nguyễn Thị Mai"),eq("0912345678"),
-            isNull(),isNull(),eq("missing"));
+        verify(jdbc).query(eq("SELECT user_id FROM guardian WHERE id=? FOR UPDATE"),any(org.springframework.jdbc.core.RowMapper.class),eq("missing"));
         verifyNoMoreInteractions(jdbc);
     }
 }

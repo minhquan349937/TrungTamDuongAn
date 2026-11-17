@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,10 +22,10 @@ public class StaffProfileService {
                           String phone, String email, LocalDate joinedOn, String status, String accountRole) {}
 
     private final JdbcTemplate jdbc;
-    private final PasswordEncoder passwordEncoder;
-    public StaffProfileService(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
+    private final AccountContactService accounts;
+    public StaffProfileService(JdbcTemplate jdbc, AccountContactService accounts) {
         this.jdbc = jdbc;
-        this.passwordEncoder = passwordEncoder;
+        this.accounts = accounts;
     }
 
     private Profile map(ResultSet rs, int row) throws SQLException {
@@ -69,22 +67,11 @@ public class StaffProfileService {
     private String position(Input input) { return "ADMIN".equals(input.accountRole()) ? "Quản trị viên" : "Giáo viên"; }
 
     private void requireAvailableEmail(Input input, String userId) {
-        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM app_user WHERE email=? AND (? IS NULL OR id<>?)",
-            Integer.class, email(input), userId, userId);
-        if (count != null && count > 0) throw duplicateEmail();
-    }
-
-    private ResponseStatusException duplicateEmail() {
-        return new ResponseStatusException(HttpStatus.CONFLICT,"Email đăng nhập đã được sử dụng bởi tài khoản khác.");
+        accounts.available(email(input),input.phone(),userId);
     }
 
     private String createAccount(Input input) {
-        String userId = ShortIds.next(jdbc, "app_user");
-        try {
-            jdbc.update("INSERT INTO app_user(id,email,password_hash,display_name,role,status) VALUES(?,?,?,?,?,'ACTIVE')",
-                userId, email(input), passwordEncoder.encode("123456"), input.fullName().trim(), input.accountRole());
-        } catch (DuplicateKeyException ex) { throw duplicateEmail(); }
-        return userId;
+        return accounts.create(input.fullName(),email(input),input.phone(),input.accountRole());
     }
 
     @Transactional
@@ -103,7 +90,7 @@ public class StaffProfileService {
         jdbc.update("INSERT INTO staff(id,code,user_id,account_role,full_name,position,specialty,phone,email,joined_on,status) " +
             "VALUES(?,?,?,?,?,?,?,?,?,?,?)", id, "NV" + String.format(Locale.ROOT,"%03d",number), userId, input.accountRole(),
             input.fullName().trim(), position(input), optional(input.specialty()),
-            optional(input.phone()), email(input), Date.valueOf(input.joinedOn()), input.status());
+            LoginIdentifiers.phone(input.phone()), email(input), Date.valueOf(input.joinedOn()), input.status());
         return get(id);
     }
 
@@ -118,14 +105,12 @@ public class StaffProfileService {
         else {
             // Release the composite FK while changing the referenced account role in this transaction.
             jdbc.update("UPDATE staff SET user_id=NULL WHERE id=?", id);
-            try {
-                jdbc.update("UPDATE app_user SET email=?,display_name=?,role=? WHERE id=?",
-                    email(input), input.fullName().trim(), input.accountRole(), userId);
-            } catch (DuplicateKeyException ex) { throw duplicateEmail(); }
+            accounts.update(userId,input.fullName(),email(input),input.phone());
+            jdbc.update("UPDATE app_user SET role=? WHERE id=?",input.accountRole(),userId);
         }
         jdbc.update("UPDATE staff SET full_name=?,position=?,specialty=?,phone=?,email=?,joined_on=?,status=?,user_id=?,account_role=? WHERE id=?",
             input.fullName().trim(), position(input), optional(input.specialty()),
-            optional(input.phone()), email(input), Date.valueOf(input.joinedOn()), input.status(), userId, input.accountRole(), id);
+            LoginIdentifiers.phone(input.phone()), email(input), Date.valueOf(input.joinedOn()), input.status(), userId, input.accountRole(), id);
         return get(id);
     }
 }

@@ -51,13 +51,13 @@ export function LoginPage() {
         )}
         {error && <Alert className="login-error" type="error" showIcon message={error} />}
         <form className="login-form" onSubmit={submit}>
-          <label htmlFor="login-email">Email</label>
+          <label htmlFor="login-email">Số điện thoại hoặc email</label>
           <Input
             id="login-email"
             size="large"
             autoComplete="username"
             prefix={<Mail size={17} />}
-            placeholder="name@example.com"
+            placeholder="Số điện thoại hoặc name@example.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
