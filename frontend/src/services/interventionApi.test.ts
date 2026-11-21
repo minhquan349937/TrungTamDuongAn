@@ -28,6 +28,7 @@ describe("intervention workflow API", () => {
           ageMinMonths: 12,
           ageMaxMonths: 24,
           strategies: [{ strategyId: "CL001", name: "Làm mẫu", description: "Cô làm mẫu trước." }],
+          activities: [{ activityId: "activity-1", name: "Ghép hình", description: "Dùng thẻ hình", note: "Bắt đầu với hai thẻ" }],
           location: {
             programId: "PR0001",
             programName: "Denver",
@@ -63,7 +64,8 @@ describe("intervention workflow API", () => {
       startDate: "2026-10-27",
       reviewToken: review.reviewToken,
       selections: [{ goalId: "GL000001", specificGoalId: null,
-        strategies: [{ strategyId: "CL001", description: "Cô làm mẫu trước." }] }],
+        strategies: [{ strategyId: "CL001", description: "Cô làm mẫu trước." }],
+        activities: [{ activityId: "activity-1", note: "Bắt đầu với hai thẻ" }] }],
     });
     expect(fetchMock.mock.calls[1][1].headers["X-CSRF-TOKEN"]).toBe("csrf");
   });

@@ -24,15 +24,17 @@ public class PlanGoalService {
     private final GoalCatalogService catalog;
     private final StudentGoalHistoryService history;
     private final StrategyService strategies;
+    private final SuggestedActivityService activities;
 
     public PlanGoalService(PlanGoalRepository repository, GoalTargetResolver targets, PlanAccessService access,
-            GoalCatalogService catalog,StudentGoalHistoryService history,StrategyService strategies) {
+            GoalCatalogService catalog,StudentGoalHistoryService history,StrategyService strategies,SuggestedActivityService activities) {
         this.repository = repository;
         this.targets=targets;
         this.access=access;
         this.catalog=catalog;
         this.history=history;
         this.strategies=strategies;
+        this.activities=activities;
     }
 
     @Transactional(readOnly=true)
@@ -71,9 +73,11 @@ public class PlanGoalService {
         if (!repository.activeTargetExists(request.goalId(), request.specificGoalId()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Goal inactive, missing, or specific goal belongs to another parent");
         var chosen=strategies.resolve(request.strategies());
+        var chosenActivities=activities.resolve(request.goalId(),request.activities());
         try {
             String id = repository.insert(planId, request.goalId(), request.specificGoalId(), actor.id());
             strategies.save(id,chosen);
+            activities.save(id,chosenActivities);
             return repository.list(planId).stream().filter(goal -> goal.id().equals(id)).findFirst().orElseThrow();
         } catch (DataIntegrityViolationException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Goal already assigned or cannot be assigned", ex);
@@ -101,9 +105,11 @@ public class PlanGoalService {
         if(repository.currentTargetExists(planId,request.goalId(),request.specificGoalId()))
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Goal already active in plan");
         var chosen=strategies.resolve(request.strategies());
+        var chosenActivities=activities.resolve(request.goalId(),request.activities());
         try {
             String id=repository.insertReplacement(planId,oldRowId,request.goalId(),request.specificGoalId(),actor.id());
             strategies.save(id,chosen);
+            activities.save(id,chosenActivities);
             return repository.list(planId).stream().filter(goal->goal.id().equals(id)).findFirst().orElseThrow();
         } catch(DataIntegrityViolationException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Goal cannot be replaced",ex);

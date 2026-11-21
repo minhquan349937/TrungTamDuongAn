@@ -1,5 +1,7 @@
 import { PlanProgress } from "./PlanProgress";
 import { GoalStrategyPicker, type StrategyOption } from "./GoalStrategyPicker";
+import { GoalActivityPicker } from "./GoalActivityPicker";
+import { GoalMethodsSummary } from "./GoalMethodsSummary";
 import { PlanGoalAdder } from "./PlanGoalAdder";
 import { evaluationLabels } from "../services/goalEvaluationApi";
 import type { ReactNode } from "react";
@@ -71,6 +73,7 @@ function fromAssigned(row: AssignedGoal): GoalSelection {
     goalId: row.goalId,
     specificGoalId: row.specificGoalId,
     strategies: row.strategies,
+    activities: row.activities,
     targetType: row.targetType,
     code: s.code,
     name: s.goal_name ?? s.name,
@@ -150,13 +153,7 @@ export function SelectionOutline({
                               {row.ageMinMonths}–{row.ageMaxMonths} tháng
                             </small>}
                             {renderTargetFooter?.(row)}
-                            {!!row.strategies?.length && <div className="ip-strategy-summary">
-                              <b>Chiến lược</b>
-                              {row.strategies.map(strategy => <div key={strategy.strategyId}>
-                                <span>{strategy.name ?? strategy.strategyId}</span>
-                                {strategy.description && <p>{strategy.description}</p>}
-                              </div>)}
-                            </div>}
+                            <GoalMethodsSummary strategies={row.strategies} activities={row.activities} />
                           </div>
                           {remove && (
                             <Button
@@ -179,7 +176,7 @@ export function SelectionOutline({
     </ol>
   );
 }
-function Plans({ rows, onSaved }: { rows: PlanView[]; onSaved: () => void }) {
+function Plans({ rows, studentName, onSaved }: { rows: PlanView[]; studentName: string; onSaved: () => void }) {
   const { user } = useAuth();
   if (!rows.length)
     return <Empty description="Chưa có kế hoạch trong mục này" />;
@@ -202,7 +199,7 @@ function Plans({ rows, onSaved }: { rows: PlanView[]; onSaved: () => void }) {
               {statusText[plan.status] ?? plan.status}
             </span>
           </div>
-          <PlanProgress plan={plan} goals={goals} onSaved={onSaved} />
+          <PlanProgress plan={plan} goals={goals} studentName={studentName} onSaved={onSaved} />
           {goals.length ? (
             <SelectionOutline rows={goals.map(fromAssigned)} renderTargetFooter={target => {
               const assigned = goals.find(row => selectionKey(row) === selectionKey(target))!;
@@ -614,7 +611,7 @@ export function RealInterventionPlans() {
                       Tạo kế hoạch học tập
                     </Button>}
                   </div>
-                  <Plans rows={activePlans} onSaved={() => setRefresh(n => n + 1)} />
+                  <Plans rows={activePlans} studentName={workspace.student.fullName} onSaved={() => setRefresh(n => n + 1)} />
                 </>
               )}
               {tab === "history" && (
@@ -796,7 +793,7 @@ export function RealInterventionPlans() {
                       index={index}
                       program={program}
                       selected={selected}
-                      renderStrategies={row => <GoalStrategyPicker
+                      renderStrategies={row => <div className="ip-goal-pickers"><GoalStrategyPicker
                         target={selected.find(item => selectionKey(item) === selectionKey(row)) ?? row}
                         options={strategyOptions} loading={strategyLoading} error={strategyError}
                         disabled={busy}
@@ -806,7 +803,16 @@ export function RealInterventionPlans() {
                             ? current.map(item => selectionKey(item) === selectionKey(target) ? { ...item, strategies } : item)
                             : [...current, { ...target, strategies }]);
                           setReview(null);
-                        }} />}
+                        }} />
+                        <GoalActivityPicker
+                          target={selected.find(item => selectionKey(item) === selectionKey(row)) ?? row}
+                          disabled={busy}
+                          onChange={(target, activities) => {
+                            setSelected(current => current.some(item => selectionKey(item) === selectionKey(target))
+                              ? current.map(item => selectionKey(item) === selectionKey(target) ? { ...item, activities } : item)
+                              : [...current, { ...target, activities }]);
+                            setReview(null);
+                          }} /></div>}
                       toggle={toggle}
                       domainId={ages[group.id] ?? ""}
                       onAgeChange={(id) => {
@@ -839,10 +845,11 @@ export function RealInterventionPlans() {
                               name,
                               startDate,
                               selections: selected.map(
-                                ({ goalId, specificGoalId, strategies }) => ({
+                                ({ goalId, specificGoalId, strategies, activities }) => ({
                                   goalId,
                                   specificGoalId,
                                   strategies: strategies?.map(({ strategyId, description }) => ({ strategyId, description })),
+                                  activities: activities?.map(({ activityId, note }) => ({ activityId, note })),
                                 }),
                               ),
                             },

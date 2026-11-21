@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, App, Button, Descriptions, Empty, Input, Modal, Space, Spin, Table, Tag } from "antd";
 import { Download, FileText, ArrowLeft } from "lucide-react";
 import { individualReportApi, type IndividualReport, type ReportEdit, type ReportStudent, type ReportSummary } from "../services/individualReportApi";
+import { fileStem, reportFileName } from "../utils/downloadFileName";
 import "./individual-reports.css";
 
 const root = "/individual/report";
@@ -61,20 +62,34 @@ function usePdf() {
   const [busy, setBusy] = useState(false);
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
+  const [downloadId, setDownloadId] = useState<string | null>(null);
+  const [fileName, setFileName] = useState("");
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
-  async function open(id: string, download: boolean) {
+  async function open(id: string, download: boolean, selectedName?: string) {
+    if (busy) return;
     setBusy(true); setError("");
     try {
       const blob = await individualReportApi.pdf(id, download);
       const objectUrl = URL.createObjectURL(blob);
       if (download) {
-        const link = document.createElement("a"); link.href = objectUrl; link.download = `bao-cao-${id}.pdf`;
+        const link = document.createElement("a"); link.href = objectUrl; link.download = `${fileStem(selectedName ?? fileName, "pdf")}.pdf`;
         document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        setDownloadId(null);
       } else setUrl(objectUrl);
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   }
-  return { busy, error, open, preview: <Modal title="Xem trước PDF đã lưu" open={!!url} onCancel={() => setUrl("")} footer={null} width={1000}>
+  function askDownload(id: string, suggestedName: string) {
+    setDownloadId(id); setFileName(suggestedName); setError("");
+  }
+  return { busy, error, open, askDownload, dialog: <Modal title="Đặt tên tệp PDF" open={!!downloadId}
+    okText="Tải PDF" okButtonProps={{ disabled: !fileStem(fileName, "pdf") }} confirmLoading={busy}
+    onCancel={() => { if (!busy) setDownloadId(null); }}
+    onOk={() => { if (downloadId) void open(downloadId, true, fileName); }}>
+    <Input autoFocus aria-label="Tên tệp PDF" maxLength={120} value={fileName} disabled={busy}
+      onChange={event => setFileName(event.target.value)} addonAfter=".pdf"
+      onPressEnter={() => { if (downloadId && fileStem(fileName, "pdf")) void open(downloadId, true, fileName); }} />
+  </Modal>, preview: <Modal title="Xem trước PDF đã lưu" open={!!url} onCancel={() => setUrl("")} footer={null} width={1000}>
     {url && <iframe title="Bản xem trước báo cáo PDF" src={url} style={{ width: "100%", height: "72vh", border: 0 }} />}
   </Modal> };
 }
@@ -104,9 +119,9 @@ function StudentReports({ studentId }: { studentId: string }) {
       { title: "Giáo viên đánh giá", dataIndex: "evaluatedByName" },
       { title: "Thao tác", render: (_: unknown, row: ReportSummary) => <Space wrap>
         <Button onClick={() => nav(`${root}/${studentId}/${row.id}`)}>{row.editable ? "Chỉnh sửa báo cáo" : "Xem báo cáo"}</Button>
-        <Button icon={<Download size={15} />} disabled={pdf.busy} onClick={() => void pdf.open(row.id, true)}>Tải xuống PDF</Button>
+        <Button icon={<Download size={15} />} disabled={pdf.busy} onClick={() => pdf.askDownload(row.id, reportFileName(student?.fullName ?? "Học sinh", row.evaluatedAt))}>Tải xuống PDF</Button>
       </Space> },
-    ]} /></section>{pdf.preview}
+    ]} /></section>{pdf.preview}{pdf.dialog}
   </>;
 }
 
@@ -199,9 +214,9 @@ function ReportEditor({ reportId, studentId }: { reportId: string; studentId: st
       <Space wrap>
         {detail.editable && <Button aria-label="Lưu chỉnh sửa" type="primary" loading={saving} disabled={!fieldsEnabled || !dirty || ![form.strengths, form.difficulties, form.supportDirections].some(value => value.trim())} onClick={() => void save()}>Lưu chỉnh sửa</Button>}
         <Button disabled={dirty || saving || pdf.busy} onClick={() => void pdf.open(reportId, false)}>Xem trước PDF</Button>
-        <Button icon={<Download size={16} />} disabled={dirty || saving || pdf.busy} onClick={() => void pdf.open(reportId, true)}>Tải xuống PDF</Button>
+        <Button icon={<Download size={16} />} disabled={dirty || saving || pdf.busy} onClick={() => pdf.askDownload(reportId, reportFileName(detail.report.studentName, detail.report.evaluatedAt))}>Tải xuống PDF</Button>
         <Button disabled={saving} onClick={back}>Quay lại</Button>
       </Space>
-    </section>{pdf.preview}
+    </section>{pdf.preview}{pdf.dialog}
   </>;
 }

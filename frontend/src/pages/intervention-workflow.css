@@ -672,6 +672,8 @@
 .ip-goal-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .ip-goal-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ip-goal-title .ant-checkbox-wrapper { align-items: flex-start; }
+.ip-goal-pickers { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; max-width: 52%; }
+.ip-goal-pickers .ant-btn { white-space: nowrap; }
 .ip-strategies { flex-shrink: 0; }
 .ip-strategies .ant-btn { color: #39725c; border-color: #dce8e1; border-radius: 7px; white-space: nowrap; }
 .ip-strategy-popover { max-width: calc(100vw - 24px); }

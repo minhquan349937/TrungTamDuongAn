@@ -5,9 +5,11 @@ import { goalEvaluationApi, evaluationLabels, evaluationStatus, type GoalEvaluat
 import { useAuth } from "../auth/AuthProvider";
 import { PlanGoalAdder } from "./PlanGoalAdder";
 import { PencilLine } from "lucide-react";
+import { GoalMethodsSummary } from "./GoalMethodsSummary";
+import { PlanExcelButton } from "./PlanExcelButton";
 
 const planStatuses = [["DRAFT", "Bản nháp"], ["ACTIVE", "Đang học"], ["COMPLETED", "Hoàn thành"], ["PAUSED", "Tạm dừng"], ["CANCELLED", "Đã hủy"]];
-export function PlanProgress({ plan, goals, onSaved, mode = "manage" }: { plan: Plan; goals: AssignedGoal[]; onSaved: () => void; mode?: "manage" | "evaluate" }) {
+export function PlanProgress({ plan, goals, onSaved, studentName, mode = "manage" }: { plan: Plan; goals: AssignedGoal[]; onSaved: () => void; studentName?: string; mode?: "manage" | "evaluate" }) {
   const { user } = useAuth();
   const [edit, setEdit] = useState(false);
   const [name, setName] = useState(plan.name);
@@ -39,7 +41,7 @@ export function PlanProgress({ plan, goals, onSaved, mode = "manage" }: { plan: 
   }
   return <div className={`ip-progress ip-progress-${mode}`}>
     {error && !goal && <Alert type="error" message={error} />}
-    {mode === "manage" && (user?.role === "ADMIN" || user?.role === "TEACHER") && <div className="ip-plan-management-actions"><Button icon={<PencilLine size={16} />} onClick={() => {
+    {mode === "manage" && (user?.role === "ADMIN" || user?.role === "TEACHER") && <div className="ip-plan-management-actions"><PlanExcelButton planId={plan.id} planName={plan.name} studentName={studentName ?? "Học sinh"} /><Button icon={<PencilLine size={16} />} onClick={() => {
       setName(plan.name); setStartDate(plan.startDate); setStatus(plan.status); setEdit(true);
     }}>Chỉnh sửa kế hoạch</Button>
     {plan.status !== "CANCELLED" && <PlanGoalAdder planId={plan.id} onSaved={onSaved} />}</div>}
@@ -47,6 +49,7 @@ export function PlanProgress({ plan, goals, onSaved, mode = "manage" }: { plan: 
       <div><b>{row.goalSnapshot.code}</b> · {row.goalSnapshot.name}
         <small style={{ display: "block" }}>{row.goalSnapshot.program_name} · {row.goalSnapshot.level_name ?? `Cấp độ ${row.goalSnapshot.level_number ?? ""}`} · {row.goalSnapshot.domain_name}</small>
         {row.specificGoalId && <small style={{ display: "block" }}>Mục tiêu chính: {row.goalSnapshot.goal_code} · {row.goalSnapshot.goal_name}</small>}
+        <GoalMethodsSummary strategies={row.strategies} activities={row.activities} />
       </div>
       <div className="ip-goal-result"><Tag color={row.status === "ACHIEVED" ? "green" : row.status === "NOT_ACHIEVED" ? "orange" : "default"}>
         {evaluationLabels[row.status as keyof typeof evaluationLabels] ?? row.status}
@@ -66,6 +69,7 @@ export function PlanProgress({ plan, goals, onSaved, mode = "manage" }: { plan: 
       <div className="ip-evaluation-intro">
         <h3>{editingId ? `Sửa lần đánh giá ${records.find(r => r.id === editingId)?.attemptNo}` : `Lần đánh giá ${records.length ? records[0].attemptNo + 1 : 1}`}</h3>
         <p>{goal?.goalSnapshot.name}</p>
+        <GoalMethodsSummary strategies={goal?.strategies} activities={goal?.activities} />
       </div>
       <div className="ip-evaluation-fields">
         <div className="ip-evaluation-score">

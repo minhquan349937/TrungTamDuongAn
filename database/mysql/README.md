@@ -36,6 +36,9 @@ Triển khai [bản điều chỉnh 1.1](../DESIGN_v1.1_chinh_sua.md) thành **2
 | [V7__student_goal_bank.sql](migrations/V7__student_goal_bank.sql) | Ngân hàng riêng từng học sinh, snapshot và khóa chống trùng |
 | [V9__student_profile_codes_and_relationships.sql](migrations/V9__student_profile_codes_and_relationships.sql) | Bộ đếm mã HS001… và quan hệ Ông/Bà; áp dụng sau V8 trên database hiện hữu |
 | [V10__staff_guardian_codes.sql](migrations/V10__staff_guardian_codes.sql) | Khởi tạo bộ đếm tuần tự cho NV và PH từ các mã số hiện có |
+| [V20__suggested_activities.sql](migrations/V20__suggested_activities.sql) | Thư viện hoạt động gợi ý theo mục tiêu và lựa chọn trong kế hoạch; không cập nhật kế hoạch cũ |
+| [V21__activity_goal_links.sql](migrations/V21__activity_goal_links.sql) | Cho phép một hoạt động được gợi ý cho nhiều mục tiêu thư viện; giữ liên kết hiện có |
+
 | [GOAL_BANK_FLOW.md](GOAL_BANK_FLOW.md) | Luồng chọn Denver/VB, API preview/complete và kết quả triển khai V7 |
 | [apply_student_goal_bank.ps1](apply_student_goal_bank.ps1) | Kiểm tra, backup và áp dụng V7 lên Docker V6 hiện hữu |
 | [GOAL_BANK_V6.md](GOAL_BANK_V6.md) | Báo cáo hiện tại: bảng trước/sau, ERD, API, file thay đổi, backup và khôi phục |
@@ -45,6 +48,8 @@ Triển khai [bản điều chỉnh 1.1](../DESIGN_v1.1_chinh_sua.md) thành **2
 | [constraints.sql](tests/constraints.sql) | 47 kiểm tra với dữ liệu giả trên database kiểm thử |
 | [concurrency.ps1](tests/concurrency.ps1) | Kiểm tra hai kết nối cùng xếp lịch chồng giờ |
 | [TESTING.md](TESTING.md) | Môi trường, kết quả và giới hạn kiểm thử |
+
+Trên database đang sử dụng, chạy `./database/mysql/apply_suggested_activities.ps1` để kiểm tra, rồi chạy lại với `-Apply` để sao lưu và áp dụng V20–V21.
 
 ## Khởi tạo
 

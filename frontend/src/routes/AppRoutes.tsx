@@ -22,6 +22,7 @@ import { IndividualAssignments } from "../pages/IndividualAssignments";
 import { IndividualReports } from "../pages/IndividualReports";
 import { ParentPlanReports } from "../pages/PlanMonthlyEvaluations";
 import { GoalCatalogManager } from "../pages/GoalCatalogManager";
+import { ReferenceActivityLibrary } from "../pages/ReferenceActivityLibrary";
 import { LoginPage } from "../pages/LoginPage";
 import { PublicWebsitePage, WebsitePreviewPage } from "../pages/PublicWebsite";
 import { WebsiteManager } from "../pages/WebsiteManager";
@@ -44,6 +45,7 @@ function Content() {
   if (pathname === "/individual/report" || pathname.startsWith("/individual/report/")) return <IndividualReports key={pathname} />;
   if (pathname === "/transfers") return <Navigate to="/students" replace />;
   if (pathname === "/library") return <GoalCatalogManager />;
+  if (pathname === "/library/reference") return <ReferenceActivityLibrary />;
   if (pathname === "/website") return <WebsiteManager />;
   if (
     pathname === "/individual/plan" ||

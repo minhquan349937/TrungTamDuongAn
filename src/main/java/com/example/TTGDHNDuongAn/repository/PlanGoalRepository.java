@@ -12,6 +12,8 @@ public class PlanGoalRepository {
     private static final String GOAL_COLUMNS = "SELECT pg.*,EXISTS(SELECT 1 FROM goal_evaluations evaluated WHERE evaluated.plan_goal_id=pg.id) has_evaluations," +
         "(SELECT JSON_ARRAYAGG(JSON_OBJECT('strategyId',ps.strategy_id,'name',s.name,'description',ps.description,'displayOrder',ps.display_order)) " +
         "FROM plan_goal_strategies ps JOIN strategies s ON s.id=ps.strategy_id WHERE ps.plan_goal_id=pg.id) strategies_json," +
+        "(SELECT JSON_ARRAYAGG(JSON_OBJECT('activityId',pa.activity_id,'name',pa.name_snapshot,'description',pa.description_snapshot,'note',pa.note,'displayOrder',pa.display_order)) " +
+        "FROM plan_goal_activities pa WHERE pa.plan_goal_id=pg.id) activities_json," +
         "(SELECT e.achievement_percent FROM goal_evaluations e " +
         "WHERE e.plan_goal_id=pg.id ORDER BY e.attempt_no DESC LIMIT 1) achievement_percent ";
     private final JdbcTemplate jdbc;
@@ -96,7 +98,8 @@ public class PlanGoalRepository {
                         rs.getString("specific_goal_id") == null ? rs.getString("goal_id") : rs.getString("specific_goal_id"),
                         mapper.readTree(rs.getString("goal_snapshot")),
                         mapper.readTree(rs.getString("criteria_snapshot")),
-                        rs.getString("status"),rs.getBigDecimal("achievement_percent"),readStrategies(rs.getString("strategies_json")),rs.getBoolean("has_evaluations")), id);
+                        rs.getString("status"),rs.getBigDecimal("achievement_percent"),readStrategies(rs.getString("strategies_json")),
+                        readActivities(rs.getString("activities_json")),rs.getBoolean("has_evaluations")), id);
     }
     private List<com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.StrategySelection> readStrategies(String json) {
         if(json==null) return List.of();
@@ -106,5 +109,15 @@ public class PlanGoalRepository {
             .thenComparing(n->n.path("strategyId").asText()));
         return nodes.stream().map(n->new com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.StrategySelection(
             n.path("strategyId").asText(),n.path("name").asText(),n.path("description").isNull()?null:n.path("description").asText())).toList();
+    }
+    private List<com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.ActivitySelection> readActivities(String json) {
+        if(json==null) return List.of();
+        var nodes=new java.util.ArrayList<tools.jackson.databind.JsonNode>();
+        mapper.readTree(json).forEach(nodes::add);
+        nodes.sort(java.util.Comparator.comparingInt((tools.jackson.databind.JsonNode n)->n.path("displayOrder").asInt())
+            .thenComparing(n->n.path("activityId").asText()));
+        return nodes.stream().map(n->new com.example.TTGDHNDuongAn.dto.GoalSelectionDtos.ActivitySelection(
+            n.path("activityId").asText(),n.path("name").asText(),n.path("description").isNull()?null:n.path("description").asText(),
+            n.path("note").isNull()?null:n.path("note").asText())).toList();
     }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Input, Modal, Select } from "antd";
 import { Plus, RefreshCw } from "lucide-react";
-import { goalBankApi, type Domain, type Goal, type GoalDetail, type Program, type ProgramLevel, type StrategyChoice } from "../services/goalBankApi";
+import { goalBankApi, type ActivityChoice, type Domain, type Goal, type GoalDetail, type Program, type ProgramLevel, type StrategyChoice } from "../services/goalBankApi";
+import { GoalActivitySelect } from "./GoalActivitySelect";
 import { interventionApi } from "../services/interventionApi";
 import type { StrategyOption } from "./GoalStrategyPicker";
 
@@ -24,6 +25,7 @@ export function PlanGoalAdder({ planId, onSaved, replaceGoalId }: { planId: stri
   const [busy, setBusy] = useState(false);
   const [strategyOptions, setStrategyOptions] = useState<StrategyOption[]>([]);
   const [strategies, setStrategies] = useState<StrategyChoice[] | null>(null);
+  const [activities, setActivities] = useState<ActivityChoice[]>([]);
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [strategyError, setStrategyError] = useState("");
   const [strategyRefresh, setStrategyRefresh] = useState(0);
@@ -36,7 +38,7 @@ export function PlanGoalAdder({ planId, onSaved, replaceGoalId }: { planId: stri
       .finally(() => { if (active) setStrategyLoading(false); });
     return () => { active = false; };
   }, [open, strategyRefresh]);
-  useEffect(() => { setStrategies(null); }, [program, level, domain, goal, specific]);
+  useEffect(() => { setStrategies(null); setActivities([]); }, [program, level, domain, goal, specific]);
   useEffect(() => {
     if (!open) return;
     goalBankApi.programs().then(setPrograms).catch((cause: Error) => setError(cause.message));
@@ -69,14 +71,14 @@ export function PlanGoalAdder({ planId, onSaved, replaceGoalId }: { planId: stri
     if (!goal || !detail || (!detail.canSelectGeneralGoal && !specific)) return;
     setBusy(true); setError("");
     try {
-      if (replaceGoalId) await goalBankApi.replace(planId, replaceGoalId, goal, specific, strategies);
-      else await goalBankApi.assign(planId, goal, specific, strategies);
+      if (replaceGoalId) await goalBankApi.replace(planId, replaceGoalId, goal, specific, strategies, activities);
+      else await goalBankApi.assign(planId, goal, specific, strategies, activities);
       setOpen(false); onSaved();
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   }
   return <>
-    <Button type={replaceGoalId ? "default" : "primary"} icon={replaceGoalId ? <RefreshCw size={15} /> : <Plus size={16} />} onClick={() => { setOpen(true); setError(""); setProgram(undefined); setLevel(undefined); setDomain(undefined); setGoal(undefined); setSpecific(null); setDetail(null); setStrategies(null); }}>{replaceGoalId ? "Thay mục tiêu" : "Thêm mục tiêu vào kế hoạch"}</Button>
+    <Button type={replaceGoalId ? "default" : "primary"} icon={replaceGoalId ? <RefreshCw size={15} /> : <Plus size={16} />} onClick={() => { setOpen(true); setError(""); setProgram(undefined); setLevel(undefined); setDomain(undefined); setGoal(undefined); setSpecific(null); setDetail(null); setStrategies(null); setActivities([]); }}>{replaceGoalId ? "Thay mục tiêu" : "Thêm mục tiêu vào kế hoạch"}</Button>
     <Modal className="ip-add-goal-modal" width={640} styles={{ body: { maxHeight: "65vh", overflowY: "auto" } }} title={replaceGoalId ? "Thay mục tiêu trong kế hoạch" : "Thêm mục tiêu vào kế hoạch"} open={open} onCancel={() => setOpen(false)} onOk={() => void save()}
       okText={replaceGoalId ? "Lưu mục tiêu thay thế" : "Lưu mục tiêu"} okButtonProps={{ disabled: !goal || !detail || (!detail.canSelectGeneralGoal && !specific) || busy }} confirmLoading={busy}>
       <div className="ip-add-goal-form">
@@ -108,6 +110,9 @@ export function PlanGoalAdder({ planId, onSaved, replaceGoalId }: { planId: stri
             onChange={event => setStrategies(rows => rows?.map(row => row.strategyId === strategy.strategyId
               ? { ...row, description: event.target.value || null } : row) ?? null)} />
         </label>)}
+        <div>Hoạt động gợi ý (tùy chọn)
+          <GoalActivitySelect goalId={goal} value={activities} onChange={setActivities} disabled={busy} />
+        </div>
       </div>
     </Modal>
   </>;

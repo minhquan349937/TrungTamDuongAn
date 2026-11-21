@@ -79,7 +79,7 @@ export const adminMenu: MenuGroup[] = [
   {
     label: "Thư viện",
     icon: "library",
-    items: items([["Thư viện nội bộ", "/library"]]),
+    items: items([["Thư viện nội bộ", "/library"], ["Thư viện tham khảo", "/library/reference"]]),
   },
 ];
 export const teacherMenu: MenuGroup[] = [
@@ -106,6 +106,7 @@ export const teacherMenu: MenuGroup[] = [
       ["Chấm công", "/work/checkin"],
       ["Xin nghỉ phép", "/leave"],
       ["Tài liệu chuyên môn", "/library"],
+      ["Thư viện tham khảo", "/library/reference"],
     ]),
   },
 ];

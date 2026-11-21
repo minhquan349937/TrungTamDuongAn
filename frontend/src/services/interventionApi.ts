@@ -93,10 +93,11 @@ export const interventionApi = {
       name: review.name,
       startDate: review.startDate,
       reviewToken: review.reviewToken,
-      selections: review.items.map(({ goalId, specificGoalId, strategies }) => ({
+      selections: review.items.map(({ goalId, specificGoalId, strategies, activities }) => ({
         goalId,
         specificGoalId,
         ...(strategies?.length ? { strategies: strategies.map(({ strategyId, description }) => ({ strategyId, description })) } : {}),
+        ...(activities?.length ? { activities: activities.map(({ activityId, note }) => ({ activityId, note })) } : {}),
       })),
     }),
 };

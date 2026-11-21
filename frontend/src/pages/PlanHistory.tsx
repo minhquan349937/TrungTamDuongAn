@@ -3,6 +3,8 @@ import { Alert, Button, Empty, Modal, Select, Spin, Tag } from "antd";
 import { CheckCheck } from "lucide-react";
 import type { PlanView } from "../services/interventionApi";
 import { planEvaluationApi, type PlanEvaluation } from "../services/planEvaluationApi";
+import { GoalMethodsSummary } from "./GoalMethodsSummary";
+import { PlanExcelButton } from "./PlanExcelButton";
 
 const day = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("vi-VN");
 const timestamp = (value?: string) => value ? new Date(`${value}Z`).toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" }) : "Chưa có thông tin";
@@ -35,12 +37,13 @@ export function PlanHistory({ plans, studentName }: { plans: PlanView[]; student
   return <>
     <div className="panel ip-history-table-wrap">
       <table className="ip-table ip-history-table">
-        <thead><tr><th>Tên kế hoạch</th><th>Thời gian dạy</th><th>Trạng thái</th><th>Báo cáo KH</th></tr></thead>
+        <thead><tr><th>Tên kế hoạch</th><th>Thời gian dạy</th><th>Trạng thái</th><th>Báo cáo KH</th><th>Excel</th></tr></thead>
         <tbody>{plans.map(row => <tr key={row.plan.id} className={row.plan.status === "ACTIVE" ? "ip-history-current" : ""}>
           <td>{row.plan.name}</td><td>{period(row)}</td>
           <td><span className={`ip-history-status ${row.plan.status.toLowerCase()}`}><CheckCheck size={18} />{labels[row.plan.status] ?? row.plan.status}</span></td>
           <td><Button type="link" className="ip-view-plan-report" disabled={!row.plan.hasEvaluation} onClick={() => setView(row)}>Xem đánh giá</Button>
             {!row.plan.hasEvaluation && <small className="ip-history-no-report">Chưa đánh giá</small>}</td>
+          <td><PlanExcelButton planId={row.plan.id} planName={row.plan.name} studentName={studentName} /></td>
         </tr>)}</tbody>
       </table>
     </div>
@@ -64,7 +67,8 @@ export function PlanHistory({ plans, studentName }: { plans: PlanView[]; student
             <tbody>{view?.goals.map((goal, index) => {
               const s = goal.goalSnapshot, percent = goal.achievementPercent;
               return <tr key={goal.id}><td>{index + 1}</td><td>{s.program_name}<small>{s.level_name ?? `Cấp độ ${s.level_number ?? ""}`}</small></td><td>{s.domain_name}</td>
-                <td><b>{s.code} · {s.name}</b>{goal.specificGoalId && <small>Mục tiêu chính: {s.goal_code} · {s.goal_name}</small>}{s.description && s.description !== s.name && <p>{s.description}</p>}</td>
+                <td><b>{s.code} · {s.name}</b>{goal.specificGoalId && <small>Mục tiêu chính: {s.goal_code} · {s.goal_name}</small>}{s.description && s.description !== s.name && <p>{s.description}</p>}
+                  <GoalMethodsSummary strategies={goal.strategies} activities={goal.activities} /></td>
                 <td>{percent == null ? "Chưa thực hiện" : `${new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(percent)}%`}</td>
                 <td><Tag color={percent == null ? "default" : percent >= 80 ? "green" : "orange"}>{percent == null ? "Chưa thực hiện" : percent >= 80 ? "Đã hoàn thành" : "Lặp lại mục tiêu"}</Tag></td></tr>;
             })}</tbody>

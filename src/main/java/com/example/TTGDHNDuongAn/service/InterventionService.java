@@ -25,12 +25,15 @@ public class InterventionService {
     private final GoalSelectionPolicy policy;
     private final StudentGoalHistoryService history;
     private final StrategyService strategies;
+    private final SuggestedActivityService activities;
     private final ObjectMapper mapper=new ObjectMapper();
     public InterventionService(InterventionRepository repository,StudentPlanRepository plans,PlanGoalRepository goals,
-            GoalTargetResolver targets,GoalCatalogRepository catalog,GoalSelectionPolicy policy,StudentGoalHistoryService history,StrategyService strategies) {
+            GoalTargetResolver targets,GoalCatalogRepository catalog,GoalSelectionPolicy policy,StudentGoalHistoryService history,StrategyService strategies,
+            SuggestedActivityService activities) {
         this.repository=repository; this.plans=plans; this.goals=goals; this.targets=targets; this.catalog=catalog; this.policy=policy;
         this.history=history;
         this.strategies=strategies;
+        this.activities=activities;
     }
     public List<StudentSummary> students(String q) {
         if(q==null || q.length()>100) throw bad("Từ khóa tối đa 100 ký tự.");
@@ -70,7 +73,8 @@ public class InterventionService {
         var unique=new LinkedHashMap<String,GoalSelectionDtos.Selection>();
         for(var item:checked) {
             var input=draft.selections().stream().filter(t->key(t.goalId(),t.specificGoalId()).equals(key(item.goalId(),item.specificGoalId()))).findFirst().orElseThrow();
-            unique.putIfAbsent(item.key(),item.withStrategies(strategies.resolve(input.strategies())));
+            unique.putIfAbsent(item.key(),item.withStrategies(strategies.resolve(input.strategies()))
+                .withActivities(activities.resolve(item.goalId(),input.activities())));
         }
         return review(studentId,draft,List.copyOf(unique.values()));
     }
@@ -96,6 +100,7 @@ public class InterventionService {
             for(var target:draft.selections()) {
                 var row=assigned.stream().filter(g->key(g.goalId(),g.specificGoalId()).equals(key(target.goalId(),target.specificGoalId()))).findFirst().orElseThrow();
                 if(!strategies.matches(row.id(),target.strategies())) throw conflict("Chiến lược của lượt hoàn tất này đã thay đổi.");
+                if(!activities.matches(row.id(),target.activities())) throw conflict("Hoạt động của lượt hoàn tất này đã thay đổi.");
             }
             return new Saved(new PlanView(saved.plan(),assigned),true);
         }
@@ -106,6 +111,7 @@ public class InterventionService {
         for(var item:checked.items()) {
             String goal=goals.insert(plan.id(),item.goalId(),item.specificGoalId(),actorId);
             strategies.save(goal,item.strategies());
+            activities.save(goal,item.activities());
         }
         return new Saved(new PlanView(plan,goals.list(plan.id())),false);
     }

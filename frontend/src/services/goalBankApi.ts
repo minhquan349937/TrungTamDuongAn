@@ -33,7 +33,8 @@ export type GoalDetail = Omit<Goal, "displayOrder"> & {
   specificGoals: SpecificGoal[]; supportsSpecificGoals: boolean; canSelectGeneralGoal: boolean; location: GoalLocation;
 };
 export type StrategyChoice = { strategyId: string; name?: string; description: string | null };
-export type GoalTarget = { goalId: string; specificGoalId: string | null; strategies?: StrategyChoice[] };
+export type ActivityChoice = { activityId: string; name?: string; description?: string | null; note: string | null };
+export type GoalTarget = { goalId: string; specificGoalId: string | null; strategies?: StrategyChoice[]; activities?: ActivityChoice[] };
 export type GoalSelection = GoalTarget & {
   targetType: "GOAL" | "SPECIFIC_GOAL"; code: string; name: string; description: string | null;
   location: GoalLocation; ageMinMonths: number; ageMaxMonths: number;
@@ -44,6 +45,7 @@ export type Page<T> = {
 export type AssignedGoal = {
   hasEvaluations?: boolean;
   strategies?: StrategyChoice[];
+  activities?: ActivityChoice[];
   goalId: string; specificGoalId: string | null;
   id: string; planId: string; targetType: "GOAL" | "SPECIFIC_GOAL"; targetId: string;
   goalSnapshot: { code: string; name: string; description: string | null; target_type: string;
@@ -95,10 +97,12 @@ export const goalBankApi = {
     request<Page<Goal>>(`/api/level-domains/${domainId}/goals?q=${encodeURIComponent(q)}&page=${page}&size=20`),
   goal: (goalId: string) => request<GoalDetail>(`/api/goals/${goalId}`),
   assigned: (planId: string) => request<AssignedGoal[]>(`/api/plans/${planId}/goals`),
-  assign: (planId: string, goalId: string, specificGoalId: string | null = null, strategies?: StrategyChoice[] | null) =>
+  assign: (planId: string, goalId: string, specificGoalId: string | null = null, strategies?: StrategyChoice[] | null, activities?: ActivityChoice[] | null) =>
     request<AssignedGoal>(`/api/plans/${planId}/goals`, { goalId, specificGoalId,
-      ...(strategies === undefined ? {} : { strategies: strategies?.length ? strategies.map(({ strategyId, description }) => ({ strategyId, description })) : null }) }),
-  replace: (planId: string, assignedId: string, goalId: string, specificGoalId: string | null = null, strategies?: StrategyChoice[] | null) =>
+      ...(strategies === undefined ? {} : { strategies: strategies?.length ? strategies.map(({ strategyId, description }) => ({ strategyId, description })) : null }),
+      ...(activities === undefined ? {} : { activities: activities?.length ? activities.map(({ activityId, note }) => ({ activityId, note })) : null }) }),
+  replace: (planId: string, assignedId: string, goalId: string, specificGoalId: string | null = null, strategies?: StrategyChoice[] | null, activities?: ActivityChoice[] | null) =>
     request<AssignedGoal>(`/api/plans/${planId}/goals/${assignedId}/replace`, { goalId, specificGoalId,
-      ...(strategies === undefined ? {} : { strategies: strategies?.length ? strategies.map(({ strategyId, description }) => ({ strategyId, description })) : null }) }, "PUT"),
+      ...(strategies === undefined ? {} : { strategies: strategies?.length ? strategies.map(({ strategyId, description }) => ({ strategyId, description })) : null }),
+      ...(activities === undefined ? {} : { activities: activities?.length ? activities.map(({ activityId, note }) => ({ activityId, note })) : null }) }, "PUT"),
 };
